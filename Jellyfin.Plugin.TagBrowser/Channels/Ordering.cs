@@ -30,6 +30,33 @@ public static class Ordering
     }
 
     /// <summary>
+    /// Orders videos pseudo-randomly but stably for a given seed (e.g. a folder path):
+    /// different folders get different picks, the same folder always the same.
+    /// </summary>
+    /// <param name="items">The videos.</param>
+    /// <param name="seed">The seed, e.g. the folder id.</param>
+    /// <returns>The shuffled videos.</returns>
+    public static IEnumerable<BaseItem> StableShuffle(IEnumerable<BaseItem> items, string seed)
+        => items.OrderBy(i => Fnv1a(seed + "|" + i.Id.ToString("N"))).ThenBy(i => i.Id);
+
+    /// <summary>
+    /// 64-bit FNV-1a hash; stable across processes, unlike string.GetHashCode.
+    /// </summary>
+    /// <param name="text">The text.</param>
+    /// <returns>The hash.</returns>
+    public static ulong Fnv1a(string text)
+    {
+        var hash = 14695981039346656037UL;
+        foreach (var c in text)
+        {
+            hash ^= c;
+            hash *= 1099511628211UL;
+        }
+
+        return hash;
+    }
+
+    /// <summary>
     /// Parses the pinned-folders setting: one entry per line, each split on the separator.
     /// </summary>
     /// <param name="pinned">The raw setting.</param>

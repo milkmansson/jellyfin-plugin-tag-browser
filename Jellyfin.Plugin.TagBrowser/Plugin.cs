@@ -4,6 +4,7 @@ using System.Collections.Generic;
 using System.Globalization;
 using System.IO;
 using System.Linq;
+using System.Threading;
 using Jellyfin.Plugin.TagBrowser.Configuration;
 using MediaBrowser.Common.Configuration;
 using MediaBrowser.Common.Plugins;
@@ -21,6 +22,7 @@ public class Plugin : BasePlugin<PluginConfiguration>, IHasWebPages
 {
     private readonly ITaskManager _taskManager;
     private readonly ILogger<Plugin> _logger;
+    private long _configurationVersion;
 
     /// <summary>
     /// Initializes a new instance of the <see cref="Plugin"/> class.
@@ -35,8 +37,17 @@ public class Plugin : BasePlugin<PluginConfiguration>, IHasWebPages
         Instance = this;
         _taskManager = taskManager;
         _logger = logger;
-        ConfigurationChanged += (_, _) => RefreshChannels();
+        ConfigurationChanged += (_, _) =>
+        {
+            Interlocked.Increment(ref _configurationVersion);
+            RefreshChannels();
+        };
     }
+
+    /// <summary>
+    /// Gets a counter that increases on every settings save (used in the channel cache key).
+    /// </summary>
+    public long ConfigurationVersion => Interlocked.Read(ref _configurationVersion);
 
     /// <summary>
     /// Gets the current plugin instance.

@@ -23,4 +23,27 @@ public class OrderingTests
     {
         Assert.Equal(expected, string.Join(",", Ordering.SortVideos(new[] { A, B, C }, order).Select(v => v.Name)));
     }
+
+    [Fact]
+    public void StableShuffle_IsStablePerSeed_AndVariesBetweenSeeds()
+    {
+        var videos = Enumerable.Range(0, 20).Select(_ => new Video { Id = Guid.NewGuid() }).ToList();
+        var first = Ordering.StableShuffle(videos, "tag:move").Select(v => v.Id).ToList();
+
+        Assert.Equal(first, Ordering.StableShuffle(videos, "tag:move").Select(v => v.Id).ToList());
+        Assert.Equal(first, Ordering.StableShuffle(Enumerable.Reverse(videos), "tag:move").Select(v => v.Id).ToList());
+
+        var firstPicks = new[] { "a", "b", "c", "d", "e", "f" }
+            .Select(seed => Ordering.StableShuffle(videos, seed).First().Id)
+            .Distinct()
+            .Count();
+        Assert.True(firstPicks > 1, "different folders should usually pick different videos");
+    }
+
+    [Fact]
+    public void Fnv1a_IsDeterministic()
+    {
+        Assert.Equal(Ordering.Fnv1a("tag:move"), Ordering.Fnv1a("tag:move"));
+        Assert.NotEqual(Ordering.Fnv1a("tag:move"), Ordering.Fnv1a("tag:level"));
+    }
 }

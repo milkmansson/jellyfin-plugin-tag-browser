@@ -52,10 +52,10 @@ public class PluginConfiguration : BasePluginConfiguration
     public string FolderOrder { get; set; } = "Alphabetical";
 
     /// <summary>
-    /// Gets or sets the order of videos in a folder: Title, PremiereDesc, PremiereAsc or DateAddedDesc.
+    /// Gets or sets which video provides a folder thumbnail: Random (stable per folder), Title, PremiereDesc, PremiereAsc or DateAddedDesc.
     /// Also decides which video provides a folder's image.
     /// </summary>
-    public string VideoOrder { get; set; } = "Title";
+    public string VideoOrder { get; set; } = "Random";
 
     /// <summary>
     /// Gets or sets the folder image: FirstVideo (thumbnail of the first video, falling back to the logo), Logo or None.

@@ -61,7 +61,7 @@ Tags only lists tagged videos; the other branches list all videos of the include
 | Prefer file-name date | Off | Use the file-name date instead of the recorded time (which is UTC). |
 | Undated folder | `Undated` | Videos without any date. Empty = hidden. |
 | Folder image | Video thumbnail | Thumbnail of a video in the folder (logo if none). Or: logo, none. |
-| Folder thumbnail taken from | First video by title | Or: newest, oldest, most recently added. |
+| Folder thumbnail taken from | Random | A random video per folder (fixed, not changing per visit). Or: first by title, newest, oldest, most recently added. |
 | Tile / wide tile / background image | Built-in | Optional server path to a PNG/JPEG. |
 
 ## Known issues

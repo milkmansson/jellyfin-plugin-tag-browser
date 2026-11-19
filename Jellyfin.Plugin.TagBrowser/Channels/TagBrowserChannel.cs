@@ -27,6 +27,7 @@ public class TagBrowserChannel : IChannel, IHasCacheKey
     private readonly ILibraryManager _libraryManager;
     private readonly IUserManager _userManager;
     private readonly ILogger<TagBrowserChannel> _logger;
+    private static readonly long StartedAt = DateTime.UtcNow.Ticks;
     private long _libraryVersion;
 
     /// <summary>
@@ -94,15 +95,15 @@ public class TagBrowserChannel : IChannel, IHasCacheKey
     }
 
     /// <inheritdoc />
+    /// <remarks>
+    /// Jellyfin caches listings per cache key for hours. The key changes on every library change and every
+    /// settings save (never reusing an old key, which would bring back stale listings), and per process start.
+    /// </remarks>
     public string GetCacheKey(string? userId)
-    {
-        var c = Plugin.Instance?.Configuration;
-        var settings = c is null ? string.Empty : string.Join('|', c.Separator, c.VideoOrder, c.FolderImage, c.Libraries, c.TagsAtTopLevel, c.BranchTags, c.BranchTagsName, c.BranchDate, c.BranchDateName, c.DateDepth, c.BranchFolders, c.BranchFoldersName, c.BranchGenres, c.BranchGenresName, c.BranchStudios, c.BranchStudiosName, c.BranchPeople, c.BranchPeopleName, c.DateFromFileName, c.PreferFileNameDate, c.UndatedName);
-        return $"{Interlocked.Read(ref _libraryVersion)}-{settings.GetHashCode(StringComparison.Ordinal)}";
-    }
+        => $"{StartedAt}-{Interlocked.Read(ref _libraryVersion)}-{Plugin.Instance?.ConfigurationVersion ?? 0}";
 
     /// <inheritdoc />
-    public Task<ChannelItemResult> GetChannelItems(InternalChannelItemQuery query, CancellationToken cancellationToken)
+    public async Task<ChannelItemResult> GetChannelItems(InternalChannelItemQuery query, CancellationToken cancellationToken)
     {
         var node = TagTree.FromFolderId(query.FolderId);
         var config = Plugin.Instance?.Configuration;
@@ -162,7 +163,7 @@ public class TagBrowserChannel : IChannel, IHasCacheKey
                 Name = folder.Path[^1],
                 Type = ChannelItemType.Folder,
                 FolderType = ChannelFolderType.Container,
-                ImageUrl = FolderImagePath(folder.Videos, videoOrder, config?.FolderImage ?? "FirstVideo"),
+                ImageUrl = FolderImagePath(folder.Videos, TagTree.ToFolderId(folder.Path), videoOrder, config?.FolderImage ?? "FirstVideo"),
             });
         }
 
@@ -173,11 +174,18 @@ public class TagBrowserChannel : IChannel, IHasCacheKey
 
         _logger.LogDebug("Tag Browser: node [{Node}] -> {Folders} folders, {Media} items", string.Join(" > ", node), folders.Count, media.Count);
 
-        return Task.FromResult(new ChannelItemResult
+        // Jellyfin only applies a channel item's image when the item has none yet, so changed
+        // thumbnail settings would never reach existing folders. Update those ourselves.
+        foreach (var folder in items.Where(i => i.Type == ChannelItemType.Folder && !string.IsNullOrEmpty(i.ImageUrl)))
+        {
+            await SyncFolderImageAsync(folder, cancellationToken).ConfigureAwait(false);
+        }
+
+        return new ChannelItemResult
         {
             Items = items,
             TotalRecordCount = items.Count,
-        });
+        };
     }
 
     /// <inheritdoc />
@@ -229,7 +237,24 @@ public class TagBrowserChannel : IChannel, IHasCacheKey
             _ => ImageFormat.Png,
         };
 
-    private static string? FolderImagePath(List<BaseItem> videos, string videoOrder, string folderImage)
+    /// <summary>
+    /// Sets the image of an existing channel folder if it differs from the wanted one.
+    /// The id formula mirrors Jellyfin's ChannelManager (externalId + channel name + "16"); see README pinning note.
+    /// </summary>
+    private async Task SyncFolderImageAsync(ChannelItemInfo info, CancellationToken cancellationToken)
+    {
+        var id = _libraryManager.GetNewItemId(info.Id + Name + "16", typeof(Folder));
+        if (_libraryManager.GetItemById(id) is not { } existing
+            || string.Equals(existing.GetImagePath(ImageType.Primary, 0), info.ImageUrl, StringComparison.Ordinal))
+        {
+            return;
+        }
+
+        existing.SetImagePath(ImageType.Primary, info.ImageUrl);
+        await _libraryManager.UpdateItemAsync(existing, existing.GetParent(), ItemUpdateType.ImageUpdate, cancellationToken).ConfigureAwait(false);
+    }
+
+    private static string? FolderImagePath(List<BaseItem> videos, string folderId, string videoOrder, string folderImage)
     {
         if (string.Equals(folderImage, "None", StringComparison.Ordinal))
         {
@@ -238,7 +263,10 @@ public class TagBrowserChannel : IChannel, IHasCacheKey
 
         if (string.Equals(folderImage, "FirstVideo", StringComparison.Ordinal))
         {
-            var thumb = Ordering.SortVideos(videos, videoOrder)
+            var candidates = string.Equals(videoOrder, "Random", StringComparison.Ordinal)
+                ? Ordering.StableShuffle(videos, folderId)
+                : Ordering.SortVideos(videos, videoOrder);
+            var thumb = candidates
                 .Select(v => v.GetImagePath(ImageType.Primary))
                 .FirstOrDefault(path => !string.IsNullOrEmpty(path));
             if (thumb is not null)
