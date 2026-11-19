@@ -1,0 +1,191 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="utf-8">
+    <title>Tag Browser</title>
+</head>
+<body>
+    <div id="TagBrowserConfigPage" data-role="page" class="page type-interior pluginConfigurationPage" data-require="emby-input,emby-button,emby-select,emby-textarea,emby-checkbox">
+        <div data-role="content">
+            <div class="content-primary">
+                <form id="TagBrowserConfigForm">
+                    <div class="verticalSection">
+                        <h2 class="sectionTitle">Tag Browser</h2>
+                        <p>Browse your library by tag. Changes are applied by running <em>Refresh Channels</em> automatically after saving.</p>
+                    </div>
+
+                    <div class="inputContainer">
+                        <input is="emby-input" type="text" id="ChannelName" label="Channel name" />
+                        <div class="fieldDescription">Shown in Jellyfin. Changing it creates a new channel; set it once.</div>
+                    </div>
+
+                    <div class="inputContainer">
+                        <input is="emby-input" type="text" id="Separator" label="Tag separator" />
+                        <div class="fieldDescription">Splits a tag into nested folders: <code>move: cambre</code> → move › cambre. Matched exactly. Leave empty to show tags flat.</div>
+                    </div>
+
+
+                    <div class="verticalSection">
+                        <h3 class="sectionTitle">Libraries</h3>
+                        <div class="fieldDescription">Only videos from the ticked libraries appear. None ticked = all libraries.</div>
+                        <div id="LibraryList" class="checkboxList paperList" style="padding:.5em 1em;"></div>
+                    </div>
+
+                    <div class="verticalSection">
+                        <h3 class="sectionTitle">Branches</h3>
+                        <div class="fieldDescription">Top-level folders of the channel.</div>
+                    </div>
+                    <div class="checkboxContainer checkboxContainer-withDescription">
+                        <label><input is="emby-checkbox" type="checkbox" id="TagsAtTopLevel" /><span>Show tags at the top level</span></label>
+                        <div class="fieldDescription checkboxFieldDescription">Tags appear alongside the other branches. Off: tags are grouped under the Tags branch name below.</div>
+                    </div>
+
+                    <div class="checkboxContainer">
+                        <label><input is="emby-checkbox" type="checkbox" id="BranchTags" /><span>Tags</span></label>
+                    </div>
+                    <div class="inputContainer">
+                        <input is="emby-input" type="text" id="BranchTagsName" label="Tags branch name" />
+                        <div class="fieldDescription">From &lt;tag&gt;; tagged videos only.</div>
+                    </div>
+                    <div class="checkboxContainer">
+                        <label><input is="emby-checkbox" type="checkbox" id="BranchDate" /><span>Date</span></label>
+                    </div>
+                    <div class="inputContainer">
+                        <input is="emby-input" type="text" id="BranchDateName" label="Date branch name" />
+                        <div class="fieldDescription">From the video's date (&lt;premiered&gt;, else the file's date), in the server's time zone. All videos.</div>
+                    </div>
+                    <div class="checkboxContainer">
+                        <label><input is="emby-checkbox" type="checkbox" id="BranchFolders" /><span>Folders</span></label>
+                    </div>
+                    <div class="inputContainer">
+                        <input is="emby-input" type="text" id="BranchFoldersName" label="Folders branch name" />
+                        <div class="fieldDescription">The library's folder structure. All videos.</div>
+                    </div>
+                    <div class="checkboxContainer">
+                        <label><input is="emby-checkbox" type="checkbox" id="BranchGenres" /><span>Genres</span></label>
+                    </div>
+                    <div class="inputContainer">
+                        <input is="emby-input" type="text" id="BranchGenresName" label="Genres branch name" />
+                        <div class="fieldDescription">From &lt;genre&gt;. All videos.</div>
+                    </div>
+                    <div class="checkboxContainer">
+                        <label><input is="emby-checkbox" type="checkbox" id="BranchStudios" /><span>Studios</span></label>
+                    </div>
+                    <div class="inputContainer">
+                        <input is="emby-input" type="text" id="BranchStudiosName" label="Studios branch name" />
+                        <div class="fieldDescription">From &lt;studio&gt;. All videos.</div>
+                    </div>
+                    <div class="checkboxContainer">
+                        <label><input is="emby-checkbox" type="checkbox" id="BranchPeople" /><span>People</span></label>
+                    </div>
+                    <div class="inputContainer">
+                        <input is="emby-input" type="text" id="BranchPeopleName" label="People branch name" />
+                        <div class="fieldDescription">From &lt;actor&gt; names. All videos.</div>
+                    </div>
+                    <div class="checkboxContainer checkboxContainer-withDescription">
+                        <label><input is="emby-checkbox" type="checkbox" id="DateFromFileName" /><span>Use a date in the file name when the video has no date</span></label>
+                        <div class="fieldDescription checkboxFieldDescription">E.g. <code>20220213_180246</code>, <code>VID-20250924-WA0005</code>.</div>
+                    </div>
+                    <div class="checkboxContainer checkboxContainer-withDescription">
+                        <label><input is="emby-checkbox" type="checkbox" id="PreferFileNameDate" /><span>Prefer the file-name date over the time recorded in the file</span></label>
+                        <div class="fieldDescription checkboxFieldDescription">Recorded times are UTC and shown in the server's time zone; file names usually hold the camera's local date. A <code>&lt;premiered&gt;</code> date always wins and must be a date only (<code>YYYY-MM-DD</code>); a time makes Jellyfin ignore it.</div>
+                    </div>
+                    <div class="inputContainer">
+                        <input is="emby-input" type="text" id="UndatedName" label="Folder for videos without a date" />
+                        <div class="fieldDescription">Inside the Date branch. Leave empty to hide them.</div>
+                    </div>
+                    <div class="selectContainer">
+                        <select is="emby-select" id="DateDepth" label="Date branch depth">
+                            <option value="Year">Year</option>
+                            <option value="Month">Year › Month</option>
+                            <option value="Day">Year › Month › Day</option>
+                        </select>
+                    </div>
+
+                    <div class="selectContainer">
+                        <select is="emby-select" id="FolderImage" label="Folder image">
+                            <option value="FirstVideo">Thumbnail of a video in the folder (logo if none)</option>
+                            <option value="Logo">Logo</option>
+                            <option value="None">None</option>
+                        </select>
+                    </div>
+
+                    <div class="selectContainer">
+                        <select is="emby-select" id="VideoOrder" label="Folder thumbnail taken from">
+                            <option value="Random">Random video (fixed per folder)</option>
+                            <option value="Title">First video by title</option>
+                            <option value="PremiereDesc">Newest video (by date)</option>
+                            <option value="PremiereAsc">Oldest video (by date)</option>
+                            <option value="DateAddedDesc">Most recently added video</option>
+                        </select>
+                        <div class="fieldDescription">Jellyfin lists channel folders and videos alphabetically.</div>
+                    </div>
+
+                    <div class="verticalSection">
+                        <h3 class="sectionTitle">Images</h3>
+                        <div class="fieldDescription">Optional. Full path on the server to a PNG or JPEG. Leave empty for the built-in artwork.</div>
+                    </div>
+
+                    <div class="inputContainer">
+                        <input is="emby-input" type="text" id="PrimaryImagePath" label="Tile image (square)" />
+                    </div>
+                    <div class="inputContainer">
+                        <input is="emby-input" type="text" id="ThumbImagePath" label="Wide tile image (16:9)" />
+                    </div>
+                    <div class="inputContainer">
+                        <input is="emby-input" type="text" id="BackdropImagePath" label="Background image (16:9)" />
+                    </div>
+
+                    <div>
+                        <button is="emby-button" type="submit" class="raised button-submit block emby-button">
+                            <span>Save</span>
+                        </button>
+                    </div>
+                </form>
+            </div>
+        </div>
+        <script type="text/javascript">
+            (function () {
+                var pluginId = '209c23d2-2b52-4e78-a4d7-3107e770e326';
+                var fields = ['ChannelName', 'Separator', 'BranchTagsName', 'BranchDateName', 'DateDepth', 'UndatedName', 'BranchFoldersName', 'BranchGenresName', 'BranchStudiosName', 'BranchPeopleName', 'FolderImage', 'VideoOrder', 'PrimaryImagePath', 'ThumbImagePath', 'BackdropImagePath'];
+                var checks = ['TagsAtTopLevel', 'BranchTags', 'BranchDate', 'BranchFolders', 'BranchGenres', 'BranchStudios', 'BranchPeople', 'DateFromFileName', 'PreferFileNameDate'];
+                var page = document.querySelector('#TagBrowserConfigPage');
+
+                function renderLibraries(config) {
+                    var selected = (config.Libraries || '').split(',').filter(function (x) { return x; });
+                    return ApiClient.getVirtualFolders().then(function (folders) {
+                        page.querySelector('#LibraryList').innerHTML = folders.map(function (f) {
+                            var on = selected.indexOf(f.ItemId) >= 0 ? ' checked' : '';
+                            return '<label style="display:block;margin:.4em 0;"><input type="checkbox" class="libCheck" value="' + f.ItemId + '"' + on + ' /> ' + f.Name + '</label>';
+                        }).join('');
+                    });
+                }
+
+                page.addEventListener('pageshow', function () {
+                    Dashboard.showLoadingMsg();
+                    ApiClient.getPluginConfiguration(pluginId).then(function (config) {
+                        fields.forEach(function (f) { var el = page.querySelector('#' + f); el.value = config[f] || (el.tagName === 'SELECT' ? el.options[0].value : ''); });
+                        checks.forEach(function (c) { page.querySelector('#' + c).checked = !!config[c]; });
+                        renderLibraries(config).then(function () { Dashboard.hideLoadingMsg(); });
+                    });
+                });
+
+                page.querySelector('#TagBrowserConfigForm').addEventListener('submit', function (e) {
+                    e.preventDefault();
+                    Dashboard.showLoadingMsg();
+                    ApiClient.getPluginConfiguration(pluginId).then(function (config) {
+                        fields.forEach(function (f) { config[f] = page.querySelector('#' + f).value; });
+                        checks.forEach(function (c) { config[c] = page.querySelector('#' + c).checked; });
+                        config.Libraries = Array.prototype.map.call(page.querySelectorAll('.libCheck:checked'), function (x) { return x.value; }).join(',');
+                        if (!config.ChannelName.trim()) { config.ChannelName = 'Tag Browser'; }
+                        ApiClient.updatePluginConfiguration(pluginId, config).then(function (result) {
+                            Dashboard.processPluginConfigurationUpdateResult(result);
+                        });
+                    });
+                    return false;
+                });
+            })();
+        </script>
+    </div>
+</body>
+</html>
