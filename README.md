@@ -5,7 +5,7 @@ Plugin allowing browsing a Jellyfin library using tags/metadata.
 
 ## Status
 
-Early development. No release yet. Videos only.
+Early development. Videos only.
 
 ## How it works
 
@@ -40,9 +40,10 @@ Tags only lists tagged videos; the other branches list all videos of the include
 
 ## Install
 
-No release yet. Planned: add the plugin repository under **Dashboard → Plugins → Repositories**, then install **Tag Browser** from the catalog.
-
-After installing, run **Dashboard → Scheduled Tasks → Refresh Channels** once, or save the plugin settings.
+1. **Dashboard → Plugins → Repositories → +**, add:
+   `https://raw.githubusercontent.com/milkmansson/jellyfin-plugin-tag-browser/main/manifest.json`
+2. **Catalog → Tag Browser → Install**, then restart Jellyfin.
+3. Open the plugin settings and **Save** once (this runs Refresh Channels).
 
 ## Configuration
 

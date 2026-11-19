@@ -1,0 +1,64 @@
+name: Release
+
+# Push a tag like v0.1.0 to build, publish a GitHub release and update manifest.json on main.
+on:
+  push:
+    tags: ['v*.*.*']
+
+permissions:
+  contents: write
+
+jobs:
+  release:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - uses: actions/setup-dotnet@v4
+        with:
+          dotnet-version: '10.0.x'
+
+      - name: Version from tag
+        id: v
+        run: |
+          tag="${GITHUB_REF_NAME}"
+          echo "tag=$tag" >> "$GITHUB_OUTPUT"
+          echo "version=${tag#v}.0" >> "$GITHUB_OUTPUT"
+
+      - name: Test
+        run: dotnet test Jellyfin.Plugin.TagBrowser.sln -c Release --nologo
+
+      - name: Build and package
+        id: pkg
+        run: |
+          dotnet publish Jellyfin.Plugin.TagBrowser/Jellyfin.Plugin.TagBrowser.csproj -c Release -o out -p:Version=${{ steps.v.outputs.version }} --nologo
+          zip="tag-browser_${{ steps.v.outputs.version }}.zip"
+          (cd out && zip -j "../$zip" Jellyfin.Plugin.TagBrowser.dll)
+          echo "zip=$zip" >> "$GITHUB_OUTPUT"
+          echo "md5=$(md5sum "$zip" | cut -d' ' -f1)" >> "$GITHUB_OUTPUT"
+
+      - name: GitHub release
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          gh release create "${{ steps.v.outputs.tag }}" "${{ steps.pkg.outputs.zip }}" \
+            --title "${{ steps.v.outputs.tag }}" --generate-notes
+
+      - name: Update manifest.json on main
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          git fetch origin main
+          git checkout main
+          python3 .github/scripts/update_manifest.py \
+            --version "${{ steps.v.outputs.version }}" \
+            --checksum "${{ steps.pkg.outputs.md5 }}" \
+            --url "https://github.com/${{ github.repository }}/releases/download/${{ steps.v.outputs.tag }}/${{ steps.pkg.outputs.zip }}" \
+            --changelog "See https://github.com/${{ github.repository }}/releases/tag/${{ steps.v.outputs.tag }}"
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add manifest.json
+          git commit -m "Update manifest for ${{ steps.v.outputs.tag }}"
+          git push origin main
