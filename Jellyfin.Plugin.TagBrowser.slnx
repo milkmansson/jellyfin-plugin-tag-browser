@@ -1,0 +1,4 @@
+<Solution>
+  <Project Path="Jellyfin.Plugin.TagBrowser/Jellyfin.Plugin.TagBrowser.csproj" />
+  <Project Path="Jellyfin.Plugin.TagBrowser.Tests/Jellyfin.Plugin.TagBrowser.Tests.csproj" />
+</Solution>

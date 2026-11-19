@@ -14,6 +14,9 @@ namespace Jellyfin.Plugin.TagBrowser.Channels;
 /// </summary>
 public sealed class Branches
 {
+    private static readonly System.Text.RegularExpressions.Regex FileNameDate =
+        new(@"(?<!\d)(?<y>(19|20)\d{2})[-_.]?(?<m>\d{2})[-_.]?(?<d>\d{2})(?!\d)", System.Text.RegularExpressions.RegexOptions.Compiled);
+
     private readonly PluginConfiguration _config;
     private readonly IReadOnlyList<(string Name, string Location)> _libraryLocations;
     private readonly Func<BaseItem, IEnumerable<string>> _people;
@@ -169,9 +172,6 @@ public sealed class Branches
 
         return null;
     }
-
-    private static readonly System.Text.RegularExpressions.Regex FileNameDate =
-        new(@"(?<!\d)(?<y>(19|20)\d{2})[-_.]?(?<m>\d{2})[-_.]?(?<d>\d{2})(?!\d)", System.Text.RegularExpressions.RegexOptions.Compiled);
 
     /// <summary>
     /// Folder path of the item relative to its library root. Prefixed with the library name when several libraries are included.

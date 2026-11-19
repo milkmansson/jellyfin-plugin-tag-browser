@@ -5,7 +5,8 @@
     <RootNamespace>Jellyfin.Plugin.TagBrowser</RootNamespace>
     <Nullable>enable</Nullable>
     <GenerateDocumentationFile>true</GenerateDocumentationFile>
-    <TreatWarningsAsErrors>false</TreatWarningsAsErrors>
+    <TreatWarningsAsErrors>true</TreatWarningsAsErrors>
+    <AnalysisMode>AllEnabledByDefault</AnalysisMode>
     <Authors>milkmansson</Authors>
     <Description>Browse a Jellyfin library by its tags, as a tree.</Description>
     <PackageLicenseExpression>GPL-3.0-or-later</PackageLicenseExpression>
@@ -16,6 +17,13 @@
     <!-- Provided by the Jellyfin server at runtime; don't ship them with the plugin. -->
     <PackageReference Include="Jellyfin.Controller" Version="12.4.0" ExcludeAssets="runtime" />
     <PackageReference Include="Jellyfin.Model" Version="12.4.0" ExcludeAssets="runtime" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <!-- Code analysis, as in Jellyfin's plugin template. -->
+    <PackageReference Include="SerilogAnalyzer" Version="0.15.0" PrivateAssets="All" />
+    <PackageReference Include="StyleCop.Analyzers" Version="1.2.0-beta.556" PrivateAssets="All" />
+    <PackageReference Include="SmartAnalyzers.MultithreadingAnalyzer" Version="1.1.31" PrivateAssets="All" />
   </ItemGroup>
 
   <ItemGroup>

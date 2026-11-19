@@ -28,7 +28,7 @@ jobs:
           echo "version=${tag#v}.0" >> "$GITHUB_OUTPUT"
 
       - name: Test
-        run: dotnet test Jellyfin.Plugin.TagBrowser.sln -c Release --nologo
+        run: dotnet test Jellyfin.Plugin.TagBrowser.slnx -c Release --nologo
 
       - name: Build and package
         id: pkg
