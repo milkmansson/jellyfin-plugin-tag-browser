@@ -1,4 +1,9 @@
-<img src="images/logo.png" alt="Tag Browser logo" width="128">
+<p align="center">
+  <picture>
+    <source media="(prefers-color-scheme: dark)" srcset="images/logo-white.png">
+    <img src="images/logo-black.png" alt="Tag Browser logo" width="160">
+  </picture>
+</p>
 
 # jellyfin-plugin-tag-browser
 Plugin allowing browsing a Jellyfin library using tags/metadata.
