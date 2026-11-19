@@ -73,6 +73,15 @@ Tags only lists tagged videos; the other branches list all videos of the include
 - **Recorded times are UTC**, shown in the server's time zone; videos recorded far away can land on the neighbouring day. Use *Prefer file-name date* or set `<premiered>`.
 - **Custom image paths** are read on the server. A missing file falls back to the built-in artwork.
 
+## Differences from the plugin template
+
+Based on [jellyfin-plugin-template](https://github.com/jellyfin/jellyfin-plugin-template) (layout, `build.yaml`, `.editorconfig`, analyzers, warnings as errors). Differences:
+
+- **Targets Jellyfin 12.4 / .NET 10** (template: 10.11 / .NET 9).
+- **Own release workflow.** Publishes a GitHub release and `manifest.json`; the template's publish workflow deploys to Jellyfin's repository and only works for official plugins.
+- **Unit tests** (`Jellyfin.Plugin.TagBrowser.Tests`).
+- **No Renovate or VS Code settings.**
+
 ## License
 
 Copyright (C) 2026 milkmansson. GPL-3.0-or-later; see [LICENSE](LICENSE).
