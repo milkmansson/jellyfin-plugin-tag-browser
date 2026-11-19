@@ -39,4 +39,26 @@ public class PluginConfiguration : BasePluginConfiguration
     /// Gets or sets an optional server path to a custom backdrop (background) image.
     /// </summary>
     public string BackdropImagePath { get; set; } = string.Empty;
+
+    /// <summary>
+    /// Gets or sets folder names to show first, one per line, in order.
+    /// A plain name matches at any level; a full path ("move: cambre") matches only that folder.
+    /// </summary>
+    public string PinnedFolders { get; set; } = string.Empty;
+
+    /// <summary>
+    /// Gets or sets the order of folders that are not pinned: Alphabetical, MostVideos or RecentlyAdded.
+    /// </summary>
+    public string FolderOrder { get; set; } = "Alphabetical";
+
+    /// <summary>
+    /// Gets or sets the order of videos in a folder: Title, PremiereDesc, PremiereAsc or DateAddedDesc.
+    /// Also decides which video provides a folder's image.
+    /// </summary>
+    public string VideoOrder { get; set; } = "Title";
+
+    /// <summary>
+    /// Gets or sets the folder image: FirstVideo (thumbnail of the first video, falling back to the logo), Logo or None.
+    /// </summary>
+    public string FolderImage { get; set; } = "FirstVideo";
 }

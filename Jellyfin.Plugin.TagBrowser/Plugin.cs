@@ -2,6 +2,7 @@
 using System;
 using System.Collections.Generic;
 using System.Globalization;
+using System.IO;
 using System.Linq;
 using Jellyfin.Plugin.TagBrowser.Configuration;
 using MediaBrowser.Common.Configuration;
@@ -59,6 +60,39 @@ public class Plugin : BasePlugin<PluginConfiguration>, IHasWebPages
             Name = Name,
             EmbeddedResourcePath = string.Format(CultureInfo.InvariantCulture, "{0}.Configuration.configPage.html", GetType().Namespace),
         };
+    }
+
+    /// <summary>
+    /// Returns a file path to the built-in logo, used as a folder image fallback.
+    /// The embedded image is written to the plugin's data folder on first use.
+    /// </summary>
+    /// <returns>The logo path, or null if it could not be written.</returns>
+    public string? GetFolderLogoPath()
+    {
+        var path = Path.Combine(DataFolderPath, "folder-logo.png");
+        if (File.Exists(path))
+        {
+            return path;
+        }
+
+        try
+        {
+            Directory.CreateDirectory(DataFolderPath);
+            using var resource = GetType().Assembly.GetManifestResourceStream($"{GetType().Namespace}.Images.primary.png");
+            if (resource is null)
+            {
+                return null;
+            }
+
+            using var file = File.Create(path);
+            resource.CopyTo(file);
+            return path;
+        }
+        catch (IOException ex)
+        {
+            _logger.LogWarning(ex, "Tag Browser: could not write folder logo to {Path}", path);
+            return null;
+        }
     }
 
     /// <summary>

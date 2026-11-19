@@ -22,11 +22,12 @@ namespace Jellyfin.Plugin.TagBrowser.Channels;
 /// <summary>
 /// A channel that presents library tags as a folder tree.
 /// </summary>
-public class TagBrowserChannel : IChannel
+public class TagBrowserChannel : IChannel, IHasCacheKey
 {
     private readonly ILibraryManager _libraryManager;
     private readonly IUserManager _userManager;
     private readonly ILogger<TagBrowserChannel> _logger;
+    private long _libraryVersion;
 
     /// <summary>
     /// Initializes a new instance of the <see cref="TagBrowserChannel"/> class.
@@ -39,6 +40,12 @@ public class TagBrowserChannel : IChannel
         _libraryManager = libraryManager;
         _userManager = userManager;
         _logger = logger;
+
+        // Any library change may change tags; bump the version so Jellyfin re-queries the channel.
+        // Channel items (including ours) are ignored, otherwise every listing would trigger another.
+        _libraryManager.ItemAdded += OnLibraryChanged;
+        _libraryManager.ItemUpdated += OnLibraryChanged;
+        _libraryManager.ItemRemoved += OnLibraryChanged;
     }
 
     /// <inheritdoc />
@@ -78,13 +85,32 @@ public class TagBrowserChannel : IChannel
     /// <inheritdoc />
     public bool IsEnabledFor(string userId) => true;
 
+    private void OnLibraryChanged(object? sender, ItemChangeEventArgs e)
+    {
+        if (e.Item is not null && e.Item.ChannelId.Equals(Guid.Empty))
+        {
+            Interlocked.Increment(ref _libraryVersion);
+        }
+    }
+
+    /// <inheritdoc />
+    public string GetCacheKey(string? userId)
+    {
+        var c = Plugin.Instance?.Configuration;
+        var settings = c is null ? string.Empty : string.Join('|', c.Separator, c.PinnedFolders, c.FolderOrder, c.VideoOrder, c.FolderImage);
+        return $"{Interlocked.Read(ref _libraryVersion)}-{settings.GetHashCode(StringComparison.Ordinal)}";
+    }
+
     /// <inheritdoc />
     public Task<ChannelItemResult> GetChannelItems(InternalChannelItemQuery query, CancellationToken cancellationToken)
     {
         var node = TagTree.FromFolderId(query.FolderId);
+        var config = Plugin.Instance?.Configuration;
         var separator = Separator;
+        var videoOrder = config?.VideoOrder ?? "Title";
 
-        var folders = new SortedDictionary<string, string>(StringComparer.OrdinalIgnoreCase); // key -> display name
+        // child folder name (case-insensitive) -> (display name, distinct videos anywhere below it)
+        var folders = new Dictionary<string, (string Name, Dictionary<Guid, BaseItem> Videos)>(StringComparer.OrdinalIgnoreCase);
         var media = new List<BaseItem>();
 
         foreach (var item in GetTaggedVideos(query.UserId))
@@ -101,12 +127,17 @@ public class TagBrowserChannel : IChannel
                 if (path.Length == node.Length)
                 {
                     placedHere = true;
+                    continue;
                 }
-                else
+
+                var child = path[node.Length];
+                if (!folders.TryGetValue(child, out var entry))
                 {
-                    var child = path[node.Length];
-                    folders.TryAdd(child, child);
+                    entry = (child, new Dictionary<Guid, BaseItem>());
+                    folders[child] = entry;
                 }
+
+                entry.Videos.TryAdd(item.Id, item);
             }
 
             if (placedHere)
@@ -115,21 +146,29 @@ public class TagBrowserChannel : IChannel
             }
         }
 
+        var pinned = Ordering.ParsePinned(config?.PinnedFolders, separator);
+        var sortedFolders = Ordering.SortFolders(
+            folders.Values.Select(f => (Path: node.Append(f.Name).ToArray(), Videos: f.Videos.Values.ToList())),
+            pinned,
+            config?.FolderOrder ?? "Alphabetical");
+
         var items = new List<ChannelItemInfo>();
-        foreach (var name in folders.Values)
+        foreach (var folder in sortedFolders)
         {
             items.Add(new ChannelItemInfo
             {
-                Id = TagTree.ToFolderId(node.Append(name).ToArray()),
-                Name = name,
+                Id = TagTree.ToFolderId(folder.Path),
+                Name = folder.Path[^1],
                 Type = ChannelItemType.Folder,
                 FolderType = ChannelFolderType.Container,
+                ImageUrl = FolderImagePath(folder.Videos, videoOrder, config?.FolderImage ?? "FirstVideo"),
             });
         }
 
-        items.AddRange(media
-            .OrderBy(i => i.SortName ?? i.Name, StringComparer.OrdinalIgnoreCase)
-            .Select(ToChannelItem));
+        // Jellyfin keys channel items on their id alone and gives each a single parent, so a video
+        // placed in several folders needs a distinct id per placement (folder path + library id).
+        var folderKey = TagTree.ToFolderId(node);
+        items.AddRange(Ordering.SortVideos(media, videoOrder).Select(v => ToChannelItem(v, folderKey)));
 
         _logger.LogDebug("Tag Browser: node [{Node}] -> {Folders} folders, {Media} items", string.Join(" > ", node), folders.Count, media.Count);
 
@@ -189,6 +228,27 @@ public class TagBrowserChannel : IChannel
             _ => ImageFormat.Png,
         };
 
+    private static string? FolderImagePath(List<BaseItem> videos, string videoOrder, string folderImage)
+    {
+        if (string.Equals(folderImage, "None", StringComparison.Ordinal))
+        {
+            return null;
+        }
+
+        if (string.Equals(folderImage, "FirstVideo", StringComparison.Ordinal))
+        {
+            var thumb = Ordering.SortVideos(videos, videoOrder)
+                .Select(v => v.GetImagePath(ImageType.Primary))
+                .FirstOrDefault(path => !string.IsNullOrEmpty(path));
+            if (thumb is not null)
+            {
+                return thumb;
+            }
+        }
+
+        return Plugin.Instance?.GetFolderLogoPath();
+    }
+
     private IEnumerable<BaseItem> GetTaggedVideos(Guid userId)
     {
         var user = userId == Guid.Empty ? null : _userManager.GetUserById(userId);
@@ -200,14 +260,16 @@ public class TagBrowserChannel : IChannel
             MediaTypes = new[] { MediaType.Video },
         };
 
-        return _libraryManager.GetItemList(itemsQuery).Where(i => i.Tags is { Length: > 0 });
+        // Channel items (including this channel's own copies) are stored as videos too; only use real library items.
+        return _libraryManager.GetItemList(itemsQuery)
+            .Where(i => i.ChannelId.Equals(Guid.Empty) && i.Tags is { Length: > 0 });
     }
 
-    private static ChannelItemInfo ToChannelItem(BaseItem item)
+    private static ChannelItemInfo ToChannelItem(BaseItem item, string folderKey)
     {
         var info = new ChannelItemInfo
         {
-            Id = item.Id.ToString("N"),
+            Id = folderKey + "#" + item.Id.ToString("N"),
             Name = item.Name,
             OriginalTitle = item.OriginalTitle,
             Overview = item.Overview,
