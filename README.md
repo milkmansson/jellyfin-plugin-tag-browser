@@ -3,13 +3,12 @@
 # jellyfin-plugin-tag-browser
 Plugin allowing browsing a Jellyfin library using tags/metadata.
 
-## Status
-
-Early development. Videos only.
+> [!WARNING]
+> **Status:** Early development. Please try this out and leave us an issue with any bugs or features.
 
 ## How it works
 
-Adds a **Tag Browser** channel. Each tag becomes a folder.
+Adds a **Tag Browser** channel. Each tag becomes a folder, with all similar videos available under that folder.  Videos with multiple tags will appear under all viable tags.
 Tags containing the separator (default `:`) are split into nested folders:
 
 | Tag | Path in the channel |
@@ -35,8 +34,8 @@ Tags only lists tagged videos; the other branches list all videos of the include
 ## Requirements
 
 - Jellyfin **12.4.0**.
-- Plugins are tied to the server version. Pin your Jellyfin version; update the plugin when upgrading Jellyfin.
-- Tested with `lscr.io/linuxserver/jellyfin:12.4ubu2604-ls60`.
+  - Plugins are tied to the server version. Pin your Jellyfin version; update the plugin when upgrading Jellyfin.
+  - Tested with `lscr.io/linuxserver/jellyfin:12.4ubu2604-ls60`.
 
 ## Install
 
