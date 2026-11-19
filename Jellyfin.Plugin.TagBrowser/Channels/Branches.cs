@@ -93,37 +93,92 @@ public sealed class Branches
     }
 
     /// <summary>
-    /// Date path in the server's time zone: ["2022", "2022-02 February", "2022-02-13"], cut to the configured depth.
-    /// Dates without a time of day (midnight UTC, e.g. from &lt;premiered&gt;) are used as-is.
+    /// Date path: ["2022", "2022-02 February", "2022-02-13"], cut to the configured depth.
+    /// Order: date-only value (e.g. &lt;premiered&gt;) as written; then the time recorded in the file, in the
+    /// server's time zone (or the file-name date if preferred); then the file-name date; then the year;
+    /// otherwise the "Undated" folder.
     /// </summary>
     /// <param name="item">The item.</param>
     /// <returns>The date path, or null if the item has no date.</returns>
     public string[]? DatePath(BaseItem item)
     {
-        if (item.PremiereDate is not { } date)
+        var fromName = _config.DateFromFileName || _config.PreferFileNameDate ? DateFromFileName(item.Path) : null;
+
+        DateTime? date = null;
+        if (item.PremiereDate is { } premiere)
         {
-            return item.ProductionYear is { } year ? new[] { year.ToString(CultureInfo.InvariantCulture) } : null;
+            if (premiere.TimeOfDay == TimeSpan.Zero)
+            {
+                // Date only (e.g. <premiered>): use as written, never shifted.
+                date = premiere.Date;
+            }
+            else if (_config.PreferFileNameDate && fromName is not null)
+            {
+                // Time recorded in the file is UTC; the file name holds the camera's local date.
+                date = fromName;
+            }
+            else
+            {
+                var utc = premiere.Kind == DateTimeKind.Unspecified ? DateTime.SpecifyKind(premiere, DateTimeKind.Utc) : premiere.ToUniversalTime();
+                date = TimeZoneInfo.ConvertTimeFromUtc(utc, TimeZoneInfo.Local);
+            }
+        }
+        else if (_config.DateFromFileName && fromName is not null)
+        {
+            date = fromName;
         }
 
-        if (date.TimeOfDay != TimeSpan.Zero)
+        if (date is not { } d)
         {
-            var utc = date.Kind == DateTimeKind.Unspecified ? DateTime.SpecifyKind(date, DateTimeKind.Utc) : date.ToUniversalTime();
-            date = TimeZoneInfo.ConvertTimeFromUtc(utc, TimeZoneInfo.Local);
+            if (item.ProductionYear is { } year)
+            {
+                return new[] { year.ToString(CultureInfo.InvariantCulture) };
+            }
+
+            return string.IsNullOrWhiteSpace(_config.UndatedName) ? null : new[] { _config.UndatedName.Trim() };
         }
 
-        var parts = new List<string> { date.ToString("yyyy", CultureInfo.InvariantCulture) };
+        var parts = new List<string> { d.ToString("yyyy", CultureInfo.InvariantCulture) };
         if (_config.DateDepth is "Month" or "Day")
         {
-            parts.Add(date.ToString("yyyy-MM MMMM", CultureInfo.InvariantCulture));
+            parts.Add(d.ToString("yyyy-MM MMMM", CultureInfo.InvariantCulture));
         }
 
         if (_config.DateDepth is "Day")
         {
-            parts.Add(date.ToString("yyyy-MM-dd", CultureInfo.InvariantCulture));
+            parts.Add(d.ToString("yyyy-MM-dd", CultureInfo.InvariantCulture));
         }
 
         return parts.ToArray();
     }
+
+    /// <summary>
+    /// Finds a date in a file name, e.g. 20220213_180246, VID_20251203_210934, VID-20250924-WA0005, 2022-03-20.
+    /// </summary>
+    /// <param name="path">The file path.</param>
+    /// <returns>The date, or null if the name contains no valid date.</returns>
+    public static DateTime? DateFromFileName(string? path)
+    {
+        var name = Path.GetFileNameWithoutExtension(path ?? string.Empty);
+        foreach (System.Text.RegularExpressions.Match m in FileNameDate.Matches(name))
+        {
+            if (DateTime.TryParseExact(
+                    m.Groups["y"].Value + m.Groups["m"].Value + m.Groups["d"].Value,
+                    "yyyyMMdd",
+                    CultureInfo.InvariantCulture,
+                    DateTimeStyles.None,
+                    out var date)
+                && date.Year >= 1990 && date <= DateTime.Today.AddDays(1))
+            {
+                return date;
+            }
+        }
+
+        return null;
+    }
+
+    private static readonly System.Text.RegularExpressions.Regex FileNameDate =
+        new(@"(?<!\d)(?<y>(19|20)\d{2})[-_.]?(?<m>\d{2})[-_.]?(?<d>\d{2})(?!\d)", System.Text.RegularExpressions.RegexOptions.Compiled);
 
     /// <summary>
     /// Folder path of the item relative to its library root. Prefixed with the library name when several libraries are included.

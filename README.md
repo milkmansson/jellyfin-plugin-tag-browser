@@ -24,7 +24,7 @@ Other branches can be enabled alongside Tags:
 
 | Branch | Built from | Example path |
 |---|---|---|
-| Date | Video date (`<premiered>`, else file date), server time zone | `Date` → `2022` → `2022-03 March` → `2022-03-20` |
+| Date | `<premiered>`, else the date recorded in the file, else a date in the file name | `Date` → `2022` → `2022-03 March` → `2022-03-20` |
 | Folders | Library folder structure | `Folders` → `Zouk` |
 | Genres | `<genre>` | `Genres` → `Brazilian Zouk` |
 | Studios | `<studio>` | `Studios` → `…` |
@@ -55,6 +55,9 @@ After installing, run **Dashboard → Scheduled Tasks → Refresh Channels** onc
 | Libraries | All | Only videos from ticked libraries appear. |
 | Branches | Tags, Date | Tick to enable; each has a name. Only Tags enabled = tags at the top level. |
 | Date branch depth | Year › Month › Day | Or: year, year › month. |
+| Date from file name | On | Used when the video has no date (`20220213_180246`, `VID-20250924-WA0005`). |
+| Prefer file-name date | Off | Use the file-name date instead of the recorded time (which is UTC). |
+| Undated folder | `Undated` | Videos without any date. Empty = hidden. |
 | Folder image | Video thumbnail | Thumbnail of a video in the folder (logo if none). Or: logo, none. |
 | Folder thumbnail taken from | First video by title | Or: newest, oldest, most recently added. |
 | Tile / wide tile / background image | Built-in | Optional server path to a PNG/JPEG. |
@@ -64,7 +67,8 @@ After installing, run **Dashboard → Scheduled Tasks → Refresh Channels** onc
 - **Alphabetical only.** Jellyfin sorts channel folders and videos by name; the plugin cannot set the order.
 - **No library view options.** Jellyfin shows channels without the library's grid/list switch and filters.
 - **Separate watched state.** Channel items are distinct from library items; playing from the channel does not mark the library item watched. Each folder placement also has its own watched state.
-- **Dates use the server's time zone.** Videos recorded far from it can land on the neighbouring day. A date-only `<premiered>` is never shifted.
+- **`<premiered>` must be a date only** (`YYYY-MM-DD`). With a time, Jellyfin ignores the field.
+- **Recorded times are UTC**, shown in the server's time zone; videos recorded far away can land on the neighbouring day. Use *Prefer file-name date* or set `<premiered>`.
 - **Custom image paths** are read on the server. A missing file falls back to the built-in artwork.
 
 ## License

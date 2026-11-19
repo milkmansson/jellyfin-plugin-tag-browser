@@ -78,6 +78,18 @@
                         <input is="emby-input" type="text" id="BranchPeopleName" label="People branch name" />
                         <div class="fieldDescription">From &lt;actor&gt; names. All videos.</div>
                     </div>
+                    <div class="checkboxContainer checkboxContainer-withDescription">
+                        <label><input is="emby-checkbox" type="checkbox" id="DateFromFileName" /><span>Use a date in the file name when the video has no date</span></label>
+                        <div class="fieldDescription checkboxFieldDescription">E.g. <code>20220213_180246</code>, <code>VID-20250924-WA0005</code>.</div>
+                    </div>
+                    <div class="checkboxContainer checkboxContainer-withDescription">
+                        <label><input is="emby-checkbox" type="checkbox" id="PreferFileNameDate" /><span>Prefer the file-name date over the time recorded in the file</span></label>
+                        <div class="fieldDescription checkboxFieldDescription">Recorded times are UTC and shown in the server's time zone; file names usually hold the camera's local date. A <code>&lt;premiered&gt;</code> date always wins and must be a date only (<code>YYYY-MM-DD</code>); a time makes Jellyfin ignore it.</div>
+                    </div>
+                    <div class="inputContainer">
+                        <input is="emby-input" type="text" id="UndatedName" label="Folder for videos without a date" />
+                        <div class="fieldDescription">Inside the Date branch. Leave empty to hide them.</div>
+                    </div>
                     <div class="selectContainer">
                         <select is="emby-select" id="DateDepth" label="Date branch depth">
                             <option value="Year">Year</option>
@@ -130,8 +142,8 @@
         <script type="text/javascript">
             (function () {
                 var pluginId = '209c23d2-2b52-4e78-a4d7-3107e770e326';
-                var fields = ['ChannelName', 'Separator', 'BranchTagsName', 'BranchDateName', 'DateDepth', 'BranchFoldersName', 'BranchGenresName', 'BranchStudiosName', 'BranchPeopleName', 'FolderImage', 'VideoOrder', 'PrimaryImagePath', 'ThumbImagePath', 'BackdropImagePath'];
-                var checks = ['BranchTags', 'BranchDate', 'BranchFolders', 'BranchGenres', 'BranchStudios', 'BranchPeople'];
+                var fields = ['ChannelName', 'Separator', 'BranchTagsName', 'BranchDateName', 'DateDepth', 'UndatedName', 'BranchFoldersName', 'BranchGenresName', 'BranchStudiosName', 'BranchPeopleName', 'FolderImage', 'VideoOrder', 'PrimaryImagePath', 'ThumbImagePath', 'BackdropImagePath'];
+                var checks = ['BranchTags', 'BranchDate', 'BranchFolders', 'BranchGenres', 'BranchStudios', 'BranchPeople', 'DateFromFileName', 'PreferFileNameDate'];
                 var page = document.querySelector('#TagBrowserConfigPage');
 
                 function renderLibraries(config) {

@@ -97,7 +97,7 @@ public class TagBrowserChannel : IChannel, IHasCacheKey
     public string GetCacheKey(string? userId)
     {
         var c = Plugin.Instance?.Configuration;
-        var settings = c is null ? string.Empty : string.Join('|', c.Separator, c.VideoOrder, c.FolderImage, c.Libraries, c.BranchTags, c.BranchTagsName, c.BranchDate, c.BranchDateName, c.DateDepth, c.BranchFolders, c.BranchFoldersName, c.BranchGenres, c.BranchGenresName, c.BranchStudios, c.BranchStudiosName, c.BranchPeople, c.BranchPeopleName);
+        var settings = c is null ? string.Empty : string.Join('|', c.Separator, c.VideoOrder, c.FolderImage, c.Libraries, c.BranchTags, c.BranchTagsName, c.BranchDate, c.BranchDateName, c.DateDepth, c.BranchFolders, c.BranchFoldersName, c.BranchGenres, c.BranchGenresName, c.BranchStudios, c.BranchStudiosName, c.BranchPeople, c.BranchPeopleName, c.DateFromFileName, c.PreferFileNameDate, c.UndatedName);
         return $"{Interlocked.Read(ref _libraryVersion)}-{settings.GetHashCode(StringComparison.Ordinal)}";
     }
 

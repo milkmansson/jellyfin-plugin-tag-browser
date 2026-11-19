@@ -105,4 +105,16 @@ public class PluginConfiguration : BasePluginConfiguration
 
     /// <summary>Gets or sets the People branch name.</summary>
     public string BranchPeopleName { get; set; } = "People";
+
+    /// <summary>Gets or sets a value indicating whether a date in the file name is used when the video has no date.</summary>
+    public bool DateFromFileName { get; set; } = true;
+
+    /// <summary>
+    /// Gets or sets a value indicating whether a date in the file name is preferred over the time recorded in the file.
+    /// A date-only &lt;premiered&gt; still wins.
+    /// </summary>
+    public bool PreferFileNameDate { get; set; }
+
+    /// <summary>Gets or sets the Date branch folder for videos without any date. Empty hides them.</summary>
+    public string UndatedName { get; set; } = "Undated";
 }
