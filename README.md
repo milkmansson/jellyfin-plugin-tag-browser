@@ -1,3 +1,5 @@
+<img src="images/logo.png" alt="Tag Browser logo" width="128">
+
 # jellyfin-plugin-tag-browser
 Plugin allowing browsing a Jellyfin library using tags/metadata.
 
@@ -15,6 +17,16 @@ Tags containing the separator (default `:`) are split into nested folders:
 | `to practise` | `to practise` |
 | `move: cambre` | `move` → `cambre` |
 | `a: b: c` | `a` → `b` → `c` |
+
+## Configuration
+
+**Dashboard → Plugins → Tag Browser.** Saving runs Refresh Channels automatically.
+
+| Setting | Default | Notes |
+|---|---|---|
+| Channel name | `Tag Browser` | Jellyfin derives the channel id from the name. Renaming creates a new channel; items' watched state resets. |
+| Tag separator | `:` | Matched exactly. Empty = no nesting. |
+| Tile / wide tile / background image | built-in | Optional server path to a PNG/JPEG. |
 
 ## Requirements
 
@@ -40,11 +52,16 @@ Requires podman. Builds in `mcr.microsoft.com/dotnet/sdk:10.0`.
 
 Defaults (override via env): `JELLYFIN_PLUGINS=/var/lib/service/containers/jellyfin/config/data/plugins`, `JELLYFIN_CONTAINER=jellyfin`.
 
+## Artwork
+
+`images/logo.svg` is the source (single colour, editable). `images/render.sh` regenerates all PNGs (needs podman).
+
 ## Known issues
 
 - **Separate watched state.** Channel items are distinct from library items. Playing from the channel does not mark the library item watched.
 - **Channel registration.** Jellyfin 12.x only discovers a channel registered via `IPluginServiceRegistrator`. Otherwise the plugin shows Active but no channel appears.
 - **Refresh Channels.** After install or upgrade the channel is not listed until the Refresh Channels task has run.
+- **Custom image paths** are read on the server. A missing file falls back to the built-in artwork (logged as a warning).
 
 ## License
 

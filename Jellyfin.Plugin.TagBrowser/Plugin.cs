@@ -1,26 +1,40 @@
 // SPDX-License-Identifier: GPL-3.0-or-later
 using System;
+using System.Collections.Generic;
+using System.Globalization;
+using System.Linq;
 using Jellyfin.Plugin.TagBrowser.Configuration;
 using MediaBrowser.Common.Configuration;
 using MediaBrowser.Common.Plugins;
+using MediaBrowser.Model.Plugins;
 using MediaBrowser.Model.Serialization;
+using MediaBrowser.Model.Tasks;
+using Microsoft.Extensions.Logging;
 
 namespace Jellyfin.Plugin.TagBrowser;
 
 /// <summary>
 /// The Tag Browser plugin: exposes library tags as a browsable channel tree.
 /// </summary>
-public class Plugin : BasePlugin<PluginConfiguration>
+public class Plugin : BasePlugin<PluginConfiguration>, IHasWebPages
 {
+    private readonly ITaskManager _taskManager;
+    private readonly ILogger<Plugin> _logger;
+
     /// <summary>
     /// Initializes a new instance of the <see cref="Plugin"/> class.
     /// </summary>
     /// <param name="applicationPaths">Instance of the <see cref="IApplicationPaths"/> interface.</param>
     /// <param name="xmlSerializer">Instance of the <see cref="IXmlSerializer"/> interface.</param>
-    public Plugin(IApplicationPaths applicationPaths, IXmlSerializer xmlSerializer)
+    /// <param name="taskManager">Instance of the <see cref="ITaskManager"/> interface.</param>
+    /// <param name="logger">The logger.</param>
+    public Plugin(IApplicationPaths applicationPaths, IXmlSerializer xmlSerializer, ITaskManager taskManager, ILogger<Plugin> logger)
         : base(applicationPaths, xmlSerializer)
     {
         Instance = this;
+        _taskManager = taskManager;
+        _logger = logger;
+        ConfigurationChanged += (_, _) => RefreshChannels();
     }
 
     /// <summary>
@@ -36,4 +50,32 @@ public class Plugin : BasePlugin<PluginConfiguration>
 
     /// <inheritdoc />
     public override string Description => "Browse a library by its tags, as a tree. Tags like \"move: cambre\" are split on the separator into nested folders.";
+
+    /// <inheritdoc />
+    public IEnumerable<PluginPageInfo> GetPages()
+    {
+        yield return new PluginPageInfo
+        {
+            Name = Name,
+            EmbeddedResourcePath = string.Format(CultureInfo.InvariantCulture, "{0}.Configuration.configPage.html", GetType().Namespace),
+        };
+    }
+
+    /// <summary>
+    /// Queues Jellyfin's "Refresh Channels" task so name and image changes show up.
+    /// </summary>
+    private void RefreshChannels()
+    {
+        var worker = _taskManager.ScheduledTasks.FirstOrDefault(t =>
+            string.Equals(t.ScheduledTask.Key, "RefreshChannels", StringComparison.Ordinal)
+            || string.Equals(t.Name, "Refresh Channels", StringComparison.Ordinal));
+
+        if (worker is null)
+        {
+            _logger.LogWarning("Tag Browser: Refresh Channels task not found; run it manually to apply changes");
+            return;
+        }
+
+        _taskManager.Execute(worker, new TaskOptions());
+    }
 }

@@ -1,0 +1,41 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 512 512" width="512" height="512">
+  <title>Tag Browser</title>
+  <!-- Monochrome logo. Single colour (#000); render.sh derives the white version.
+       Branches: one path each (start, curve control, end; stroke-width = thickness).
+       The outer transform fits the drawing into the 512x512 frame with a margin.
+       The gift tag hangs from the right-most tip. -->
+  <g transform="translate(25.7 17.6) scale(0.893)">
+    <g fill="none" stroke="#000" stroke-linecap="round" stroke-linejoin="round">
+      <!-- trunk (short, bush-like) -->
+      <path d="M254 410 Q255 376 252 342" stroke-width="32"/>
+      <!-- main branches -->
+      <path d="M252 342 Q204 319 161 288" stroke-width="30"/>
+      <path d="M252 342 Q288 300 323 256" stroke-width="30"/>
+      <!-- left limb -->
+      <path d="M161 288 Q127 308 90 323" stroke-width="22"/>
+      <path d="M90 323 Q76 351 56 374" stroke-width="15"/>
+      <path d="M90 323 Q65 336 44 352" stroke-width="15"/>
+      <path d="M90 323 Q61 308 31 298" stroke-width="15"/>
+      <path d="M161 288 Q129 259 92 235" stroke-width="22"/>
+      <path d="M92 235 Q58 241 24 248" stroke-width="15"/>
+      <path d="M92 235 Q66 217 41 198" stroke-width="15"/>
+      <path d="M92 235 Q90 205 83 176" stroke-width="15"/>
+      <path d="M161 288 Q160 244 154 200" stroke-width="22"/>
+      <path d="M154 200 Q124 184 94 167" stroke-width="15"/>
+      <path d="M154 200 Q171 175 188 149" stroke-width="15"/>
+      <!-- right limb -->
+      <path d="M323 256 Q324 217 330 179" stroke-width="22"/>
+      <path d="M330 179 Q311 155 287 136" stroke-width="15"/>
+      <path d="M330 179 Q335 148 333 117" stroke-width="15"/>
+      <path d="M330 179 Q346 157 358 133" stroke-width="15"/>
+      <path d="M323 256 Q366 248 409 247" stroke-width="22"/>
+      <path d="M409 247 Q432 221 459 198" stroke-width="15"/>
+      <path d="M409 247 Q406 276 394 302" stroke-width="15"/>
+    </g>
+    <!-- gift tag (hole cut out) and its string -->
+    <g transform="translate(467 228) rotate(6)">
+      <path fill="#000" fill-rule="evenodd" d="M0 0 L32 22 L32 94 Q32 104 22 104 L-22 104 Q-32 104 -32 94 L-32 22 Z M0 19 a8 8 0 1 0 0.01 0 Z"/>
+    </g>
+    <path d="M459 198 Q471 216 466 248" fill="none" stroke="#000" stroke-width="7" stroke-linecap="round"/>
+  </g>
+</svg>

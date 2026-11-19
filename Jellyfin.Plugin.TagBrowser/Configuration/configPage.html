@@ -1,0 +1,80 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="utf-8">
+    <title>Tag Browser</title>
+</head>
+<body>
+    <div id="TagBrowserConfigPage" data-role="page" class="page type-interior pluginConfigurationPage" data-require="emby-input,emby-button">
+        <div data-role="content">
+            <div class="content-primary">
+                <form id="TagBrowserConfigForm">
+                    <div class="verticalSection">
+                        <h2 class="sectionTitle">Tag Browser</h2>
+                        <p>Browse your library by tag. Changes are applied by running <em>Refresh Channels</em> automatically after saving.</p>
+                    </div>
+
+                    <div class="inputContainer">
+                        <input is="emby-input" type="text" id="ChannelName" label="Channel name" />
+                        <div class="fieldDescription">Shown in Jellyfin. Changing it creates a new channel; set it once.</div>
+                    </div>
+
+                    <div class="inputContainer">
+                        <input is="emby-input" type="text" id="Separator" label="Tag separator" />
+                        <div class="fieldDescription">Splits a tag into nested folders: <code>move: cambre</code> → move › cambre. Matched exactly. Leave empty to show tags flat.</div>
+                    </div>
+
+                    <div class="verticalSection">
+                        <h3 class="sectionTitle">Images</h3>
+                        <div class="fieldDescription">Optional. Full path on the server to a PNG or JPEG. Leave empty for the built-in artwork.</div>
+                    </div>
+
+                    <div class="inputContainer">
+                        <input is="emby-input" type="text" id="PrimaryImagePath" label="Tile image (square)" />
+                    </div>
+                    <div class="inputContainer">
+                        <input is="emby-input" type="text" id="ThumbImagePath" label="Wide tile image (16:9)" />
+                    </div>
+                    <div class="inputContainer">
+                        <input is="emby-input" type="text" id="BackdropImagePath" label="Background image (16:9)" />
+                    </div>
+
+                    <div>
+                        <button is="emby-button" type="submit" class="raised button-submit block emby-button">
+                            <span>Save</span>
+                        </button>
+                    </div>
+                </form>
+            </div>
+        </div>
+        <script type="text/javascript">
+            (function () {
+                var pluginId = '209c23d2-2b52-4e78-a4d7-3107e770e326';
+                var fields = ['ChannelName', 'Separator', 'PrimaryImagePath', 'ThumbImagePath', 'BackdropImagePath'];
+                var page = document.querySelector('#TagBrowserConfigPage');
+
+                page.addEventListener('pageshow', function () {
+                    Dashboard.showLoadingMsg();
+                    ApiClient.getPluginConfiguration(pluginId).then(function (config) {
+                        fields.forEach(function (f) { page.querySelector('#' + f).value = config[f] || ''; });
+                        Dashboard.hideLoadingMsg();
+                    });
+                });
+
+                page.querySelector('#TagBrowserConfigForm').addEventListener('submit', function (e) {
+                    e.preventDefault();
+                    Dashboard.showLoadingMsg();
+                    ApiClient.getPluginConfiguration(pluginId).then(function (config) {
+                        fields.forEach(function (f) { config[f] = page.querySelector('#' + f).value; });
+                        if (!config.ChannelName.trim()) { config.ChannelName = 'Tag Browser'; }
+                        ApiClient.updatePluginConfiguration(pluginId, config).then(function (result) {
+                            Dashboard.processPluginConfigurationUpdateResult(result);
+                        });
+                    });
+                    return false;
+                });
+            })();
+        </script>
+    </div>
+</body>
+</html>

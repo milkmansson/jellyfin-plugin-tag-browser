@@ -10,6 +10,7 @@
 # Override paths with env vars if your setup differs:
 #   JELLYFIN_PLUGINS   Jellyfin's plugins dir on the host
 #   JELLYFIN_CONTAINER container name to restart
+#   JELLYFIN_PLUGINS_IN_CONTAINER the same plugins dir as seen inside the container
 set -euo pipefail
 
 REPO="$(cd "$(dirname "$0")" && pwd)"
@@ -17,6 +18,7 @@ PROJECT="Jellyfin.Plugin.TagBrowser"
 SDK_IMAGE="mcr.microsoft.com/dotnet/sdk:10.0"
 JELLYFIN_PLUGINS="${JELLYFIN_PLUGINS:-/var/lib/service/containers/jellyfin/config/data/plugins}"
 JELLYFIN_CONTAINER="${JELLYFIN_CONTAINER:-jellyfin}"
+JELLYFIN_PLUGINS_IN_CONTAINER="${JELLYFIN_PLUGINS_IN_CONTAINER:-/config/data/plugins}"
 
 NAME="$(sed -nE 's/^name: *"?([^"]+)"?$/\1/p' "$REPO/build.yaml")"
 VERSION="$(sed -nE 's/^version: *"?([^"]+)"?$/\1/p' "$REPO/build.yaml")"
@@ -37,6 +39,7 @@ echo ">> installing to $DEST"
 find "$JELLYFIN_PLUGINS" -maxdepth 1 -type d -name "${NAME}_*" ! -path "$DEST" -exec rm -rf {} +
 mkdir -p "$DEST"
 cp "$OUT/$PROJECT.dll" "$DEST/"
+cp "$REPO/$PROJECT/Images/primary.png" "$DEST/logo.png"
 cat > "$DEST/meta.json" <<JSON
 {
   "category": "General",
@@ -51,6 +54,7 @@ cat > "$DEST/meta.json" <<JSON
   "version": "$VERSION",
   "status": "Active",
   "autoUpdate": false,
+  "imagePath": "$JELLYFIN_PLUGINS_IN_CONTAINER/${NAME}_${VERSION}/logo.png",
   "assemblies": []
 }
 JSON
