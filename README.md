@@ -20,6 +20,18 @@ Tags containing the separator (default `:`) are split into nested folders:
 
 A video with several tags appears in each matching folder.
 
+Other branches can be enabled alongside Tags:
+
+| Branch | Built from | Example path |
+|---|---|---|
+| Date | Video date (`<premiered>`, else file date), server time zone | `Date` → `2022` → `2022-03 March` → `2022-03-20` |
+| Folders | Library folder structure | `Folders` → `Zouk` |
+| Genres | `<genre>` | `Genres` → `Brazilian Zouk` |
+| Studios | `<studio>` | `Studios` → `…` |
+| People | `<actor>` names | `People` → `…` |
+
+Tags only lists tagged videos; the other branches list all videos of the included libraries.
+
 ## Requirements
 
 - Jellyfin **12.4.0**.
@@ -40,6 +52,9 @@ After installing, run **Dashboard → Scheduled Tasks → Refresh Channels** onc
 |---|---|---|
 | Channel name | `Tag Browser` | Renaming creates a new channel; watched state of its items resets. |
 | Tag separator | `:` | Matched exactly. Empty = no nesting. |
+| Libraries | All | Only videos from ticked libraries appear. |
+| Branches | Tags, Date | Tick to enable; each has a name. Only Tags enabled = tags at the top level. |
+| Date branch depth | Year › Month › Day | Or: year, year › month. |
 | Folder image | Video thumbnail | Thumbnail of a video in the folder (logo if none). Or: logo, none. |
 | Folder thumbnail taken from | First video by title | Or: newest, oldest, most recently added. |
 | Tile / wide tile / background image | Built-in | Optional server path to a PNG/JPEG. |
@@ -49,6 +64,7 @@ After installing, run **Dashboard → Scheduled Tasks → Refresh Channels** onc
 - **Alphabetical only.** Jellyfin sorts channel folders and videos by name; the plugin cannot set the order.
 - **No library view options.** Jellyfin shows channels without the library's grid/list switch and filters.
 - **Separate watched state.** Channel items are distinct from library items; playing from the channel does not mark the library item watched. Each folder placement also has its own watched state.
+- **Dates use the server's time zone.** Videos recorded far from it can land on the neighbouring day. A date-only `<premiered>` is never shifted.
 - **Custom image paths** are read on the server. A missing file falls back to the built-in artwork.
 
 ## License

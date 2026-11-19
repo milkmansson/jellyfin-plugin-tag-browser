@@ -5,7 +5,7 @@
     <title>Tag Browser</title>
 </head>
 <body>
-    <div id="TagBrowserConfigPage" data-role="page" class="page type-interior pluginConfigurationPage" data-require="emby-input,emby-button,emby-select,emby-textarea">
+    <div id="TagBrowserConfigPage" data-role="page" class="page type-interior pluginConfigurationPage" data-require="emby-input,emby-button,emby-select,emby-textarea,emby-checkbox">
         <div data-role="content">
             <div class="content-primary">
                 <form id="TagBrowserConfigForm">
@@ -22,6 +22,68 @@
                     <div class="inputContainer">
                         <input is="emby-input" type="text" id="Separator" label="Tag separator" />
                         <div class="fieldDescription">Splits a tag into nested folders: <code>move: cambre</code> → move › cambre. Matched exactly. Leave empty to show tags flat.</div>
+                    </div>
+
+
+                    <div class="verticalSection">
+                        <h3 class="sectionTitle">Libraries</h3>
+                        <div class="fieldDescription">Only videos from the ticked libraries appear. None ticked = all libraries.</div>
+                        <div id="LibraryList" class="checkboxList paperList" style="padding:.5em 1em;"></div>
+                    </div>
+
+                    <div class="verticalSection">
+                        <h3 class="sectionTitle">Branches</h3>
+                        <div class="fieldDescription">Top-level folders of the channel. If only Tags is enabled, tags are shown at the top level.</div>
+                    </div>
+
+                    <div class="checkboxContainer">
+                        <label><input is="emby-checkbox" type="checkbox" id="BranchTags" /><span>Tags</span></label>
+                    </div>
+                    <div class="inputContainer">
+                        <input is="emby-input" type="text" id="BranchTagsName" label="Tags branch name" />
+                        <div class="fieldDescription">From &lt;tag&gt;; tagged videos only.</div>
+                    </div>
+                    <div class="checkboxContainer">
+                        <label><input is="emby-checkbox" type="checkbox" id="BranchDate" /><span>Date</span></label>
+                    </div>
+                    <div class="inputContainer">
+                        <input is="emby-input" type="text" id="BranchDateName" label="Date branch name" />
+                        <div class="fieldDescription">From the video's date (&lt;premiered&gt;, else the file's date), in the server's time zone. All videos.</div>
+                    </div>
+                    <div class="checkboxContainer">
+                        <label><input is="emby-checkbox" type="checkbox" id="BranchFolders" /><span>Folders</span></label>
+                    </div>
+                    <div class="inputContainer">
+                        <input is="emby-input" type="text" id="BranchFoldersName" label="Folders branch name" />
+                        <div class="fieldDescription">The library's folder structure. All videos.</div>
+                    </div>
+                    <div class="checkboxContainer">
+                        <label><input is="emby-checkbox" type="checkbox" id="BranchGenres" /><span>Genres</span></label>
+                    </div>
+                    <div class="inputContainer">
+                        <input is="emby-input" type="text" id="BranchGenresName" label="Genres branch name" />
+                        <div class="fieldDescription">From &lt;genre&gt;. All videos.</div>
+                    </div>
+                    <div class="checkboxContainer">
+                        <label><input is="emby-checkbox" type="checkbox" id="BranchStudios" /><span>Studios</span></label>
+                    </div>
+                    <div class="inputContainer">
+                        <input is="emby-input" type="text" id="BranchStudiosName" label="Studios branch name" />
+                        <div class="fieldDescription">From &lt;studio&gt;. All videos.</div>
+                    </div>
+                    <div class="checkboxContainer">
+                        <label><input is="emby-checkbox" type="checkbox" id="BranchPeople" /><span>People</span></label>
+                    </div>
+                    <div class="inputContainer">
+                        <input is="emby-input" type="text" id="BranchPeopleName" label="People branch name" />
+                        <div class="fieldDescription">From &lt;actor&gt; names. All videos.</div>
+                    </div>
+                    <div class="selectContainer">
+                        <select is="emby-select" id="DateDepth" label="Date branch depth">
+                            <option value="Year">Year</option>
+                            <option value="Month">Year › Month</option>
+                            <option value="Day">Year › Month › Day</option>
+                        </select>
                     </div>
 
                     <div class="selectContainer">
@@ -68,14 +130,26 @@
         <script type="text/javascript">
             (function () {
                 var pluginId = '209c23d2-2b52-4e78-a4d7-3107e770e326';
-                var fields = ['ChannelName', 'Separator', 'FolderImage', 'VideoOrder', 'PrimaryImagePath', 'ThumbImagePath', 'BackdropImagePath'];
+                var fields = ['ChannelName', 'Separator', 'BranchTagsName', 'BranchDateName', 'DateDepth', 'BranchFoldersName', 'BranchGenresName', 'BranchStudiosName', 'BranchPeopleName', 'FolderImage', 'VideoOrder', 'PrimaryImagePath', 'ThumbImagePath', 'BackdropImagePath'];
+                var checks = ['BranchTags', 'BranchDate', 'BranchFolders', 'BranchGenres', 'BranchStudios', 'BranchPeople'];
                 var page = document.querySelector('#TagBrowserConfigPage');
+
+                function renderLibraries(config) {
+                    var selected = (config.Libraries || '').split(',').filter(function (x) { return x; });
+                    return ApiClient.getVirtualFolders().then(function (folders) {
+                        page.querySelector('#LibraryList').innerHTML = folders.map(function (f) {
+                            var on = selected.indexOf(f.ItemId) >= 0 ? ' checked' : '';
+                            return '<label style="display:block;margin:.4em 0;"><input type="checkbox" class="libCheck" value="' + f.ItemId + '"' + on + ' /> ' + f.Name + '</label>';
+                        }).join('');
+                    });
+                }
 
                 page.addEventListener('pageshow', function () {
                     Dashboard.showLoadingMsg();
                     ApiClient.getPluginConfiguration(pluginId).then(function (config) {
                         fields.forEach(function (f) { var el = page.querySelector('#' + f); el.value = config[f] || (el.tagName === 'SELECT' ? el.options[0].value : ''); });
-                        Dashboard.hideLoadingMsg();
+                        checks.forEach(function (c) { page.querySelector('#' + c).checked = !!config[c]; });
+                        renderLibraries(config).then(function () { Dashboard.hideLoadingMsg(); });
                     });
                 });
 
@@ -84,6 +158,8 @@
                     Dashboard.showLoadingMsg();
                     ApiClient.getPluginConfiguration(pluginId).then(function (config) {
                         fields.forEach(function (f) { config[f] = page.querySelector('#' + f).value; });
+                        checks.forEach(function (c) { config[c] = page.querySelector('#' + c).checked; });
+                        config.Libraries = Array.prototype.map.call(page.querySelectorAll('.libCheck:checked'), function (x) { return x.value; }).join(',');
                         if (!config.ChannelName.trim()) { config.ChannelName = 'Tag Browser'; }
                         ApiClient.updatePluginConfiguration(pluginId, config).then(function (result) {
                             Dashboard.processPluginConfigurationUpdateResult(result);

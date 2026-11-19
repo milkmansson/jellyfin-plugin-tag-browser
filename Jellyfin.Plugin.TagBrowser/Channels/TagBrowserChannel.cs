@@ -97,7 +97,7 @@ public class TagBrowserChannel : IChannel, IHasCacheKey
     public string GetCacheKey(string? userId)
     {
         var c = Plugin.Instance?.Configuration;
-        var settings = c is null ? string.Empty : string.Join('|', c.Separator, c.PinnedFolders, c.FolderOrder, c.VideoOrder, c.FolderImage);
+        var settings = c is null ? string.Empty : string.Join('|', c.Separator, c.VideoOrder, c.FolderImage, c.Libraries, c.BranchTags, c.BranchTagsName, c.BranchDate, c.BranchDateName, c.DateDepth, c.BranchFolders, c.BranchFoldersName, c.BranchGenres, c.BranchGenresName, c.BranchStudios, c.BranchStudiosName, c.BranchPeople, c.BranchPeopleName);
         return $"{Interlocked.Read(ref _libraryVersion)}-{settings.GetHashCode(StringComparison.Ordinal)}";
     }
 
@@ -113,12 +113,13 @@ public class TagBrowserChannel : IChannel, IHasCacheKey
         var folders = new Dictionary<string, (string Name, Dictionary<Guid, BaseItem> Videos)>(StringComparer.OrdinalIgnoreCase);
         var media = new List<BaseItem>();
 
-        foreach (var item in GetTaggedVideos(query.UserId))
+        var branches = new Branches(config ?? new Configuration.PluginConfiguration(), GetLibraryLocations(), PeopleOf);
+
+        foreach (var item in GetSourceVideos(query.UserId))
         {
             var placedHere = false;
-            foreach (var tag in item.Tags)
+            foreach (var path in branches.PathsFor(item))
             {
-                var path = TagTree.Split(tag, separator);
                 if (path.Length == 0 || !TagTree.StartsWith(path, node))
                 {
                     continue;
@@ -249,7 +250,7 @@ public class TagBrowserChannel : IChannel, IHasCacheKey
         return Plugin.Instance?.GetFolderLogoPath();
     }
 
-    private IEnumerable<BaseItem> GetTaggedVideos(Guid userId)
+    private IEnumerable<BaseItem> GetSourceVideos(Guid userId)
     {
         var user = userId == Guid.Empty ? null : _userManager.GetUserById(userId);
 
@@ -260,10 +261,33 @@ public class TagBrowserChannel : IChannel, IHasCacheKey
             MediaTypes = new[] { MediaType.Video },
         };
 
-        // Channel items (including this channel's own copies) are stored as videos too; only use real library items.
+        var roots = GetLibraryLocations().Select(l => l.Location.TrimEnd(Path.DirectorySeparatorChar) + Path.DirectorySeparatorChar).ToList();
+
+        // Channel items (including this channel's own copies) are stored as videos too; only use real library items
+        // from the included libraries.
         return _libraryManager.GetItemList(itemsQuery)
-            .Where(i => i.ChannelId.Equals(Guid.Empty) && i.Tags is { Length: > 0 });
+            .Where(i => i.ChannelId.Equals(Guid.Empty)
+                && !string.IsNullOrEmpty(i.Path)
+                && roots.Any(r => i.Path.StartsWith(r, StringComparison.Ordinal)));
     }
+
+    /// <summary>
+    /// Included libraries as (name, root folder) pairs. Empty "Libraries" setting means all libraries.
+    /// </summary>
+    private IReadOnlyList<(string Name, string Location)> GetLibraryLocations()
+    {
+        var selected = (Plugin.Instance?.Configuration.Libraries ?? string.Empty)
+            .Split(',', StringSplitOptions.RemoveEmptyEntries | StringSplitOptions.TrimEntries)
+            .ToHashSet(StringComparer.OrdinalIgnoreCase);
+
+        return _libraryManager.GetVirtualFolders()
+            .Where(v => v.CollectionType is not CollectionTypeOptions.boxsets)
+            .Where(v => selected.Count == 0 || selected.Contains(v.ItemId))
+            .SelectMany(v => v.Locations.Select(l => (v.Name, l)))
+            .ToList();
+    }
+
+    private IEnumerable<string> PeopleOf(BaseItem item) => _libraryManager.GetPeople(item).Select(p => p.Name);
 
     private static ChannelItemInfo ToChannelItem(BaseItem item, string folderKey)
     {

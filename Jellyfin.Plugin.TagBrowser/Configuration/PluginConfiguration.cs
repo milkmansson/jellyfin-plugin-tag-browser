@@ -61,4 +61,48 @@ public class PluginConfiguration : BasePluginConfiguration
     /// Gets or sets the folder image: FirstVideo (thumbnail of the first video, falling back to the logo), Logo or None.
     /// </summary>
     public string FolderImage { get; set; } = "FirstVideo";
+
+    /// <summary>
+    /// Gets or sets the libraries to include (comma-separated library item ids). Empty = all libraries.
+    /// </summary>
+    public string Libraries { get; set; } = string.Empty;
+
+    /// <summary>Gets or sets a value indicating whether the Tags branch is shown.</summary>
+    public bool BranchTags { get; set; } = true;
+
+    /// <summary>Gets or sets the Tags branch name.</summary>
+    public string BranchTagsName { get; set; } = "Tags";
+
+    /// <summary>Gets or sets a value indicating whether the Date branch is shown.</summary>
+    public bool BranchDate { get; set; } = true;
+
+    /// <summary>Gets or sets the Date branch name.</summary>
+    public string BranchDateName { get; set; } = "Date";
+
+    /// <summary>Gets or sets the Date branch depth: Year, Month or Day.</summary>
+    public string DateDepth { get; set; } = "Day";
+
+    /// <summary>Gets or sets a value indicating whether the library Folders branch is shown.</summary>
+    public bool BranchFolders { get; set; }
+
+    /// <summary>Gets or sets the Folders branch name.</summary>
+    public string BranchFoldersName { get; set; } = "Folders";
+
+    /// <summary>Gets or sets a value indicating whether the Genres branch is shown.</summary>
+    public bool BranchGenres { get; set; }
+
+    /// <summary>Gets or sets the Genres branch name.</summary>
+    public string BranchGenresName { get; set; } = "Genres";
+
+    /// <summary>Gets or sets a value indicating whether the Studios branch is shown.</summary>
+    public bool BranchStudios { get; set; }
+
+    /// <summary>Gets or sets the Studios branch name.</summary>
+    public string BranchStudiosName { get; set; } = "Studios";
+
+    /// <summary>Gets or sets a value indicating whether the People branch is shown.</summary>
+    public bool BranchPeople { get; set; }
+
+    /// <summary>Gets or sets the People branch name.</summary>
+    public string BranchPeopleName { get; set; } = "People";
 }
