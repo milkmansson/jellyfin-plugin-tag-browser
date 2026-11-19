@@ -19,7 +19,7 @@ public static class Ordering
     /// <returns>The sorted videos.</returns>
     public static IEnumerable<BaseItem> SortVideos(IEnumerable<BaseItem> items, string videoOrder)
     {
-        var byTitle = (Func<BaseItem, string>)(i => i.SortName ?? i.Name ?? string.Empty);
+        var byTitle = (Func<BaseItem, string>)(i => i.ForcedSortName ?? i.Name ?? string.Empty);
         return videoOrder switch
         {
             "PremiereDesc" => items.OrderByDescending(i => i.PremiereDate ?? i.DateCreated).ThenBy(byTitle, StringComparer.OrdinalIgnoreCase),

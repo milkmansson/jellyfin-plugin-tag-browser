@@ -32,13 +32,6 @@ public sealed class Branches
     }
 
     /// <summary>
-    /// Gets a value indicating whether only the Tags branch is enabled; tags are then shown at the top level.
-    /// </summary>
-    public bool TagsOnly =>
-        _config.BranchTags && !_config.BranchDate && !_config.BranchFolders
-        && !_config.BranchGenres && !_config.BranchStudios && !_config.BranchPeople;
-
-    /// <summary>
     /// Returns every tree path the item appears under. The last segment of a path is the folder that lists the item.
     /// </summary>
     /// <param name="item">The library item.</param>
@@ -52,7 +45,7 @@ public sealed class Branches
                 var path = TagTree.Split(tag, _config.Separator);
                 if (path.Length > 0)
                 {
-                    yield return TagsOnly ? path : Prefix(Name(_config.BranchTagsName, "Tags"), path);
+                    yield return _config.TagsAtTopLevel ? path : Prefix(Name(_config.BranchTagsName, "Tags"), path);
                 }
             }
         }

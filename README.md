@@ -53,7 +53,8 @@ After installing, run **Dashboard → Scheduled Tasks → Refresh Channels** onc
 | Channel name | `Tag Browser` | Renaming creates a new channel; watched state of its items resets. |
 | Tag separator | `:` | Matched exactly. Empty = no nesting. |
 | Libraries | All | Only videos from ticked libraries appear. |
-| Branches | Tags, Date | Tick to enable; each has a name. Only Tags enabled = tags at the top level. |
+| Tags at the top level | On | Tags appear alongside the other branches. Off: grouped under the Tags branch. |
+| Branches | Tags, Date | Tick to enable; each has a name. |
 | Date branch depth | Year › Month › Day | Or: year, year › month. |
 | Date from file name | On | Used when the video has no date (`20220213_180246`, `VID-20250924-WA0005`). |
 | Prefer file-name date | Off | Use the file-name date instead of the recorded time (which is UTC). |

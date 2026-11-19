@@ -33,7 +33,11 @@
 
                     <div class="verticalSection">
                         <h3 class="sectionTitle">Branches</h3>
-                        <div class="fieldDescription">Top-level folders of the channel. If only Tags is enabled, tags are shown at the top level.</div>
+                        <div class="fieldDescription">Top-level folders of the channel.</div>
+                    </div>
+                    <div class="checkboxContainer checkboxContainer-withDescription">
+                        <label><input is="emby-checkbox" type="checkbox" id="TagsAtTopLevel" /><span>Show tags at the top level</span></label>
+                        <div class="fieldDescription checkboxFieldDescription">Tags appear alongside the other branches. Off: tags are grouped under the Tags branch name below.</div>
                     </div>
 
                     <div class="checkboxContainer">
@@ -143,7 +147,7 @@
             (function () {
                 var pluginId = '209c23d2-2b52-4e78-a4d7-3107e770e326';
                 var fields = ['ChannelName', 'Separator', 'BranchTagsName', 'BranchDateName', 'DateDepth', 'UndatedName', 'BranchFoldersName', 'BranchGenresName', 'BranchStudiosName', 'BranchPeopleName', 'FolderImage', 'VideoOrder', 'PrimaryImagePath', 'ThumbImagePath', 'BackdropImagePath'];
-                var checks = ['BranchTags', 'BranchDate', 'BranchFolders', 'BranchGenres', 'BranchStudios', 'BranchPeople', 'DateFromFileName', 'PreferFileNameDate'];
+                var checks = ['TagsAtTopLevel', 'BranchTags', 'BranchDate', 'BranchFolders', 'BranchGenres', 'BranchStudios', 'BranchPeople', 'DateFromFileName', 'PreferFileNameDate'];
                 var page = document.querySelector('#TagBrowserConfigPage');
 
                 function renderLibraries(config) {

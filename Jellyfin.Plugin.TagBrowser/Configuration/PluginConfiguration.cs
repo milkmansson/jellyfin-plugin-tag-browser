@@ -70,7 +70,13 @@ public class PluginConfiguration : BasePluginConfiguration
     /// <summary>Gets or sets a value indicating whether the Tags branch is shown.</summary>
     public bool BranchTags { get; set; } = true;
 
-    /// <summary>Gets or sets the Tags branch name.</summary>
+    /// <summary>
+    /// Gets or sets a value indicating whether tags are shown at the top level, alongside the other branches.
+    /// When off, tags are grouped under the Tags branch folder.
+    /// </summary>
+    public bool TagsAtTopLevel { get; set; } = true;
+
+    /// <summary>Gets or sets the Tags branch name (used when tags are not at the top level).</summary>
     public string BranchTagsName { get; set; } = "Tags";
 
     /// <summary>Gets or sets a value indicating whether the Date branch is shown.</summary>
