@@ -3,7 +3,7 @@ Plugin allowing browsing a Jellyfin library using tags/metadata.
 
 ## Status
 
-Early development. The channel loads but returns no items yet.
+Early development. Tags are shown as a folder tree; videos only.
 
 ## How it works
 
