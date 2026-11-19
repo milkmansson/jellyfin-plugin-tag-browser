@@ -1,0 +1,17 @@
+---
+name: "Tag Browser"
+guid: "209c23d2-2b52-4e78-a4d7-3107e770e326"
+version: "0.1.0.0"
+targetAbi: "12.4.0.0"
+framework: "net10.0"
+owner: "milkmansson"
+overview: "Browse a library by its tags, as a tree"
+description: >
+  Adds a "Tag Browser" channel that presents your library's tags as folders.
+  Tags containing a separator (default ":") are split into nested levels,
+  so "move: cambre" appears under move > cambre.
+category: "General"
+artifacts:
+  - "Jellyfin.Plugin.TagBrowser.dll"
+changelog: >
+  Initial skeleton.
