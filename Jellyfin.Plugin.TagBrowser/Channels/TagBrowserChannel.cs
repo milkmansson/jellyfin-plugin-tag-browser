@@ -129,7 +129,7 @@ public class TagBrowserChannel : IChannel, IHasCacheKey
         => $"{StartedAt}-{Interlocked.Read(ref _libraryVersion)}-{Plugin.Instance?.ConfigurationVersion ?? 0}";
 
     /// <inheritdoc />
-    public async Task<ChannelItemResult> GetChannelItems(InternalChannelItemQuery query, CancellationToken cancellationToken)
+    public virtual async Task<ChannelItemResult> GetChannelItems(InternalChannelItemQuery query, CancellationToken cancellationToken)
     {
         var config = Plugin.Instance?.Configuration;
         if (!IsEnabledFor(string.Empty))
@@ -333,6 +333,40 @@ public class TagBrowserChannel : IChannel, IHasCacheKey
         }
 
         return Plugin.Instance?.GetFolderLogoPath();
+    }
+
+    /// <summary>
+    /// Jellyfin stores a channel's images once, when it first creates the channel, and never asks again. Set this
+    /// channel's tile images to <paramref name="path"/> if they differ, so they follow the videos' thumbnails.
+    /// </summary>
+    /// <param name="path">The image path.</param>
+    /// <param name="cancellationToken">The cancellation token.</param>
+    /// <returns>A task that completes when the images are up to date.</returns>
+    protected async Task SyncChannelTileAsync(string path, CancellationToken cancellationToken)
+    {
+        var channels = _libraryManager.GetItemList(new InternalItemsQuery
+        {
+            IncludeItemTypes = new[] { BaseItemKind.Channel },
+            Name = Name,
+        });
+
+        foreach (var channel in channels.Where(c => string.Equals(c.Name, Name, StringComparison.Ordinal)))
+        {
+            var changed = false;
+            foreach (var type in new[] { ImageType.Primary, ImageType.Thumb })
+            {
+                if (!string.Equals(channel.GetImagePath(type, 0), path, StringComparison.Ordinal))
+                {
+                    channel.SetImagePath(type, path);
+                    changed = true;
+                }
+            }
+
+            if (changed)
+            {
+                await _libraryManager.UpdateItemAsync(channel, channel.GetParent(), ItemUpdateType.ImageUpdate, cancellationToken).ConfigureAwait(false);
+            }
+        }
     }
 
     /// <summary>

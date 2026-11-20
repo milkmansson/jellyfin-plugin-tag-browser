@@ -4,6 +4,7 @@ using System.Collections.Generic;
 using System.IO;
 using System.Threading;
 using System.Threading.Tasks;
+using MediaBrowser.Controller.Channels;
 using MediaBrowser.Controller.Library;
 using MediaBrowser.Controller.Providers;
 using MediaBrowser.Model.Drawing;
@@ -67,24 +68,53 @@ public sealed class PromotedTagChannel : TagBrowserChannel
     /// <returns>The image.</returns>
     public override Task<DynamicImageResponse> GetChannelImage(ImageType type, CancellationToken cancellationToken)
     {
-        var config = Plugin.Instance?.Configuration;
-        if (type is ImageType.Primary or ImageType.Thumb && Assigned is { } plan && config is not null)
+        if (type is ImageType.Primary or ImageType.Thumb && TilePath() is { } path)
         {
-            var folderId = TagTree.ToFolderId(plan.Root);
-            var path = FolderImagePath(VideosUnder(plan.Root), folderId, config.VideoOrder, config.FolderImage);
-            if (path is not null && File.Exists(path) && !string.Equals(path, Plugin.Instance?.GetFolderLogoPath(), StringComparison.Ordinal))
+            return Task.FromResult(new DynamicImageResponse
             {
-                return Task.FromResult(new DynamicImageResponse
+                HasImage = true,
+                Path = path,
+                Protocol = MediaProtocol.File,
+                Format = System.IO.Path.GetExtension(path).ToLowerInvariant() switch
                 {
-                    HasImage = true,
-                    Path = path,
-                    Protocol = MediaProtocol.File,
-                    Format = System.IO.Path.GetExtension(path).ToLowerInvariant() switch { ".jpg" or ".jpeg" => ImageFormat.Jpg, ".webp" => ImageFormat.Webp, ".gif" => ImageFormat.Gif, _ => ImageFormat.Png },
-                });
-            }
+                    ".jpg" or ".jpeg" => ImageFormat.Jpg,
+                    ".webp" => ImageFormat.Webp,
+                    ".gif" => ImageFormat.Gif,
+                    _ => ImageFormat.Png,
+                },
+            });
         }
 
         return base.GetChannelImage(type, cancellationToken);
+    }
+
+    /// <inheritdoc />
+    public override async Task<ChannelItemResult> GetChannelItems(InternalChannelItemQuery query, CancellationToken cancellationToken)
+    {
+        var result = await base.GetChannelItems(query, cancellationToken).ConfigureAwait(false);
+        if (string.IsNullOrEmpty(query.FolderId) && TilePath() is { } path)
+        {
+            await SyncChannelTileAsync(path, cancellationToken).ConfigureAwait(false);
+        }
+
+        return result;
+    }
+
+    /// <summary>
+    /// The thumbnail of one of the channel's videos, or null when the settings ask for the logo or none has one.
+    /// </summary>
+    private string? TilePath()
+    {
+        var config = Plugin.Instance?.Configuration;
+        if (Assigned is not { } plan || config is null)
+        {
+            return null;
+        }
+
+        var path = FolderImagePath(VideosUnder(plan.Root), TagTree.ToFolderId(plan.Root), config.VideoOrder, config.FolderImage);
+        return path is not null && File.Exists(path) && !string.Equals(path, Plugin.Instance?.GetFolderLogoPath(), StringComparison.Ordinal)
+            ? path
+            : null;
     }
 
     /// <inheritdoc />
