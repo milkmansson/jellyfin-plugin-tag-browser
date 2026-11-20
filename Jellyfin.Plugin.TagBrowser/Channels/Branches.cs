@@ -6,6 +6,7 @@ using System.IO;
 using System.Linq;
 using Jellyfin.Plugin.TagBrowser.Configuration;
 using MediaBrowser.Controller.Entities;
+using MediaBrowser.Model.Entities;
 
 namespace Jellyfin.Plugin.TagBrowser.Channels;
 
@@ -17,23 +18,50 @@ public sealed class Branches
     private static readonly System.Text.RegularExpressions.Regex FileNameDate =
         new(@"(?<!\d)(?<y>(19|20)\d{2})[-_.]?(?<m>\d{2})[-_.]?(?<d>\d{2})(?!\d)", System.Text.RegularExpressions.RegexOptions.Compiled);
 
+    /// <summary>
+    /// Property names listed first in the settings page suggestions (any other readable item property also works).
+    /// </summary>
+    public static readonly IReadOnlyList<string> SuggestedProperties = new[]
+    {
+        "genres", "studios", "productionYear", "officialRating", "productionLocations",
+        "person.actor", "person.director", "person.writer", "person.producer", "person.composer", "person.guestStar",
+        "originalTitle", "container", "videoType", "width", "height", "communityRating", "criticRating",
+        "preferredMetadataLanguage", "preferredMetadataCountryCode", "isHD", "is3D", "isLocked", "dateCreated", "premiereDate",
+        "video.codec", "video.height", "video.width", "audio.codec", "audio.language", "audio.channels", "subtitle.language",
+    };
+
     private static readonly HashSet<string> PersonKinds = new(Enum.GetNames<Jellyfin.Data.Enums.PersonKind>().Select(n => n.ToLowerInvariant()), StringComparer.OrdinalIgnoreCase);
 
     private readonly PluginConfiguration _config;
     private readonly IReadOnlyList<(string Name, string Location)> _libraryLocations;
     private readonly Func<BaseItem, IEnumerable<(string Name, string Kind)>> _people;
+    private readonly Func<BaseItem, IEnumerable<BaseItem>> _parents;
+    private readonly Func<BaseItem, IReadOnlyList<MediaStream>> _streams;
+    private readonly Func<BaseItem, string, Func<string[]>, string[]> _memo;
 
     /// <summary>
     /// Initializes a new instance of the <see cref="Branches"/> class.
     /// </summary>
     /// <param name="config">The plugin configuration.</param>
     /// <param name="libraryLocations">Included libraries as (name, root folder) pairs.</param>
+    /// <param name="parents">Returns the items an item inherits metadata from (an episode's series); none by default.</param>
+    /// <param name="streams">Returns the media streams (video, audio, subtitles) of an item; none by default.</param>
+    /// <param name="memo">Remembers a computed stream value list per item and name (the lookup is costly); computes every time by default.</param>
     /// <param name="people">Returns the people of an item as (name, role) pairs (only called when a person property is configured).</param>
-    public Branches(PluginConfiguration config, IReadOnlyList<(string Name, string Location)> libraryLocations, Func<BaseItem, IEnumerable<(string Name, string Kind)>> people)
+    public Branches(
+        PluginConfiguration config,
+        IReadOnlyList<(string Name, string Location)> libraryLocations,
+        Func<BaseItem, IEnumerable<(string Name, string Kind)>> people,
+        Func<BaseItem, IEnumerable<BaseItem>>? parents = null,
+        Func<BaseItem, IReadOnlyList<MediaStream>>? streams = null,
+        Func<BaseItem, string, Func<string[]>, string[]>? memo = null)
     {
         _config = config;
         _libraryLocations = libraryLocations;
         _people = people;
+        _parents = parents ?? (_ => Array.Empty<BaseItem>());
+        _streams = streams ?? (_ => Array.Empty<MediaStream>());
+        _memo = memo ?? ((_, _, compute) => compute());
     }
 
     /// <summary>
@@ -81,16 +109,25 @@ public sealed class Branches
             }
 
             var name = Name(branch!.DisplayName, char.ToUpperInvariant(property[0]) + property.Substring(1));
-            foreach (var value in values.Where(v => !string.IsNullOrWhiteSpace(v)).Select(v => v.Trim()).Distinct(StringComparer.OrdinalIgnoreCase))
+            var distinct = values.Where(v => !string.IsNullOrWhiteSpace(v)).Select(v => v.Trim()).Distinct(StringComparer.OrdinalIgnoreCase).ToList();
+            foreach (var value in distinct)
             {
                 yield return new[] { name, value };
+            }
+
+            if (distinct.Count == 0 && !string.IsNullOrWhiteSpace(_config.UnknownName))
+            {
+                yield return new[] { name, _config.UnknownName.Trim() };
             }
         }
     }
 
     /// <summary>
-    /// Values of a named item property, or null when the name is unknown. Names are case-insensitive;
-    /// plurals work too. Any person role Jellyfin knows (actor, director, writer, ...) is a valid name.
+    /// Values of a named property, or null when the name is unknown. Names are case-insensitive and are Jellyfin's own:
+    /// an item property (Genres, Studios, ProductionYear, ...), person.&lt;role&gt; (person.actor, person.director, ...) or
+    /// video./audio./subtitle.&lt;stream property&gt;.
+    /// An episode also gets its series' values (Jellyfin keeps genres, studios, countries and people on the series),
+    /// except ProductionYear and OfficialRating, which come from the series only when the episode has none.
     /// </summary>
     /// <param name="item">The item.</param>
     /// <param name="property">The property name.</param>
@@ -98,25 +135,192 @@ public sealed class Branches
     public IEnumerable<string>? PropertyValues(BaseItem item, string property)
     {
         var key = property.Trim().ToLowerInvariant();
-        switch (key)
+        var own = OwnValues(item, key);
+        if (own is null)
         {
-            case "genre" or "genres":
-                return item.Genres;
-            case "studio" or "studios":
-                return item.Studios;
-            case "year" or "productionyear":
-                return item.ProductionYear is { } y ? new[] { y.ToString(CultureInfo.InvariantCulture) } : Array.Empty<string>();
-            case "rating" or "mpaa" or "officialrating" or "certification":
-                return item.OfficialRating is { } r ? new[] { r } : Array.Empty<string>();
-            case "country" or "countries" or "productionlocation" or "productionlocations":
-                return item.ProductionLocations ?? Array.Empty<string>();
-            case "people" or "person":
-                return _people(item).Select(p => p.Name);
+            return null;
         }
 
-        var kind = key.EndsWith('s') ? key.Substring(0, key.Length - 1) : key;
-        return PersonKinds.Contains(kind) ? _people(item).Where(p => string.Equals(p.Kind, kind, StringComparison.OrdinalIgnoreCase)).Select(p => p.Name) : null;
+        var fallbackOnly = key is "productionyear" or "officialrating";
+        var values = own.ToList();
+        if (fallbackOnly && values.Count > 0)
+        {
+            return values;
+        }
+
+        foreach (var parent in _parents(item))
+        {
+            values.AddRange(OwnValues(parent, key) ?? Array.Empty<string>());
+            if (fallbackOnly && values.Count > 0)
+            {
+                break;
+            }
+        }
+
+        return values;
     }
+
+    private IEnumerable<string>? OwnValues(BaseItem item, string key)
+    {
+        if (StreamName(key) is var (streamKind, streamProp))
+        {
+            return StreamValues(item, streamKind, streamProp);
+        }
+
+        if (key.StartsWith("person.", StringComparison.Ordinal))
+        {
+            var role = key.Substring("person.".Length);
+            return PersonKinds.Contains(role)
+                ? _people(item).Where(p => string.Equals(p.Kind, role, StringComparison.OrdinalIgnoreCase)).Select(p => p.Name)
+                : null;
+        }
+
+        return key is "tag" or "tags" ? null : ReflectedValues(item, key);
+    }
+
+    /// <summary>
+    /// Values of any other readable property of the item, found by name (case-insensitive): text, numbers,
+    /// yes/no, dates, enums and lists of those. Null when the item has no such property or it is not of such a type.
+    /// </summary>
+    private static IEnumerable<string>? ReflectedValues(BaseItem item, string key)
+        => FindProperty(item.GetType(), key) is { } info ? ValuesOf(info, item) : null;
+
+    private static IEnumerable<string> ValuesOf(System.Reflection.PropertyInfo info, object target)
+    {
+        object? value;
+        try
+        {
+            value = info.GetValue(target);
+        }
+        catch (Exception ex) when (ex is System.Reflection.TargetInvocationException or InvalidOperationException or NullReferenceException)
+        {
+            return Array.Empty<string>();
+        }
+
+        if (value is null)
+        {
+            return Array.Empty<string>();
+        }
+
+        if (value is string text)
+        {
+            return new[] { text };
+        }
+
+        if (value is System.Collections.IEnumerable list)
+        {
+            return list.Cast<object?>().Select(ScalarText).OfType<string>().ToList();
+        }
+
+        return ScalarText(value) is { } single ? new[] { single } : Array.Empty<string>();
+    }
+
+    /// <summary>
+    /// Splits a stream property name of the form video.&lt;property&gt;, audio.&lt;property&gt; or subtitle.&lt;property&gt;
+    /// into (stream kind, property).
+    /// </summary>
+    private static (string Kind, string Prop)? StreamName(string key)
+    {
+        var dot = key.IndexOf('.', StringComparison.Ordinal);
+        if (dot <= 0 || dot == key.Length - 1)
+        {
+            return null;
+        }
+
+        var kind = key.Substring(0, dot);
+        return kind is "video" or "audio" or "subtitle" ? (kind, key.Substring(dot + 1)) : null;
+    }
+
+    private IEnumerable<string>? StreamValues(BaseItem item, string kind, string prop)
+    {
+        var type = kind switch { "video" => MediaStreamType.Video, "audio" => MediaStreamType.Audio, _ => MediaStreamType.Subtitle };
+        if (FindProperty(typeof(MediaStream), prop) is not { } info)
+        {
+            return null;
+        }
+
+        // Memoised: reading an item's streams is a database lookup, so keep only the short values.
+        return _memo(item, kind + "." + info.Name.ToLowerInvariant(), () => _streams(item)
+            .Where(m => m.Type == type)
+            .SelectMany(m => ValuesOf(info, m))
+            .Where(v => !string.IsNullOrWhiteSpace(v))
+            .ToArray());
+    }
+
+    private static System.Reflection.PropertyInfo? FindProperty(Type type, string name)
+    {
+        var flags = System.Reflection.BindingFlags.Public | System.Reflection.BindingFlags.Instance | System.Reflection.BindingFlags.IgnoreCase;
+        System.Reflection.PropertyInfo? info;
+        try
+        {
+            info = type.GetProperty(name, flags);
+        }
+        catch (System.Reflection.AmbiguousMatchException)
+        {
+            // A property hidden by a derived class: take the most derived one.
+            info = type.GetProperty(name, flags | System.Reflection.BindingFlags.DeclaredOnly);
+        }
+
+        if (info is null || !info.CanRead || info.GetIndexParameters().Length > 0)
+        {
+            return null;
+        }
+
+        var t = Nullable.GetUnderlyingType(info.PropertyType) ?? info.PropertyType;
+        var element = t.IsArray ? t.GetElementType()! : t.IsGenericType ? t.GetGenericArguments()[0] : t;
+        element = Nullable.GetUnderlyingType(element) ?? element;
+        return IsScalar(t) || (t != typeof(string) && typeof(System.Collections.IEnumerable).IsAssignableFrom(t) && IsScalar(element)) ? info : null;
+    }
+
+    /// <summary>
+    /// Every property name that can be used: the suggested ones first, then the person roles, then each other readable
+    /// property of videos and episodes that holds text, numbers, yes/no, dates or lists of those (minus tags and internal ids/paths).
+    /// </summary>
+    /// <returns>The names.</returns>
+    public static IReadOnlyList<string> AllSuggestions()
+    {
+        var names = new List<string>(SuggestedProperties);
+        names.AddRange(Enum.GetNames<Jellyfin.Data.Enums.PersonKind>().Select(n => "person." + char.ToLowerInvariant(n[0]) + n.Substring(1)));
+        var reflected = new[] { typeof(Video), typeof(MediaBrowser.Controller.Entities.TV.Episode) }
+            .SelectMany(t => t.GetProperties(System.Reflection.BindingFlags.Public | System.Reflection.BindingFlags.Instance))
+            .Select(p => p.Name)
+            .Where(n => FindProperty(typeof(MediaBrowser.Controller.Entities.TV.Episode), n) is not null || FindProperty(typeof(Video), n) is not null)
+            .Where(n => !n.EndsWith("Id", StringComparison.Ordinal) && !n.EndsWith("Ids", StringComparison.Ordinal)
+                && !n.EndsWith("Path", StringComparison.Ordinal) && !n.EndsWith("Paths", StringComparison.Ordinal)
+                && !n.EndsWith("Key", StringComparison.Ordinal) && !n.EndsWith("Keys", StringComparison.Ordinal)
+                && !n.StartsWith("Supports", StringComparison.Ordinal) && !n.StartsWith("Enable", StringComparison.Ordinal)
+                && !n.StartsWith("Inherited", StringComparison.Ordinal)
+                && !string.Equals(n, "Tags", StringComparison.Ordinal))
+            .Select(n => char.ToLowerInvariant(n[0]) + n.Substring(1))
+            .OrderBy(n => n, StringComparer.OrdinalIgnoreCase);
+        names.AddRange(reflected);
+        string[] skip = { "Localized", "Delivery", "Supports", "Dv", "Rpu", "Pl", "Bl", "El", "TimeBase", "CodecTimeBase", "NalLength", "Path", "Score", "Index", "IsExternalUrl", "Comment" };
+        foreach (var kind in new[] { "video", "audio", "subtitle" })
+        {
+            names.AddRange(typeof(MediaStream).GetProperties(System.Reflection.BindingFlags.Public | System.Reflection.BindingFlags.Instance)
+                .Select(p => p.Name)
+                .Where(n => FindProperty(typeof(MediaStream), n) is not null && !skip.Any(k => n.StartsWith(k, StringComparison.Ordinal)))
+                .OrderBy(n => n, StringComparer.OrdinalIgnoreCase)
+                .Select(n => kind + "." + char.ToLowerInvariant(n[0]) + n.Substring(1)));
+        }
+
+        return names.Distinct(StringComparer.OrdinalIgnoreCase).Where(n => !n.Equals("unknown", StringComparison.OrdinalIgnoreCase)).ToList();
+    }
+
+    private static bool IsScalar(Type t) =>
+        t == typeof(string) || t.IsPrimitive || t.IsEnum || t == typeof(decimal) || t == typeof(DateTime) || t == typeof(DateTimeOffset);
+
+    private static string? ScalarText(object? value) => value switch
+    {
+        null => null,
+        string s => s,
+        DateTime d => d.ToString("yyyy-MM-dd", CultureInfo.InvariantCulture),
+        DateTimeOffset d => d.ToString("yyyy-MM-dd", CultureInfo.InvariantCulture),
+        IFormattable f when value.GetType().IsPrimitive || value is decimal => f.ToString(null, CultureInfo.InvariantCulture),
+        Enum e => e.ToString(),
+        bool b => b ? "Yes" : "No",
+        _ => null,
+    };
 
     /// <summary>
     /// Date path: ["2022", "2022-02 February", "2022-02-13"], cut to the configured depth.

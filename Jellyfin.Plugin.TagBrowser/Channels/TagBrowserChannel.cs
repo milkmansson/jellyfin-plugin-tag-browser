@@ -27,6 +27,7 @@ public class TagBrowserChannel : IChannel, IHasCacheKey
     private readonly ILibraryManager _libraryManager;
     private readonly IUserManager _userManager;
     private readonly ILogger<TagBrowserChannel> _logger;
+    private static readonly System.Collections.Concurrent.ConcurrentDictionary<(Guid Id, string Key), (DateTime Modified, string[] Values)> StreamCache = new();
     private static readonly long StartedAt = DateTime.UtcNow.Ticks;
     private long _libraryVersion;
 
@@ -114,10 +115,13 @@ public class TagBrowserChannel : IChannel, IHasCacheKey
         var folders = new Dictionary<string, (string Name, Dictionary<Guid, BaseItem> Videos)>(StringComparer.OrdinalIgnoreCase);
         var media = new List<BaseItem>();
 
-        var branches = new Branches(config ?? new Configuration.PluginConfiguration(), GetLibraryLocations(), PeopleOf);
+        var branches = new Branches(config ?? new Configuration.PluginConfiguration(), GetLibraryLocations(), PeopleOf, ParentsOf, StreamsOf, StreamMemo);
 
+        var timer = System.Diagnostics.Stopwatch.StartNew();
+        var scanned = 0;
         foreach (var item in GetSourceVideos(query.UserId))
         {
+            scanned++;
             var placedHere = false;
             foreach (var path in branches.PathsFor(item))
             {
@@ -147,6 +151,14 @@ public class TagBrowserChannel : IChannel, IHasCacheKey
                 media.Add(item);
             }
         }
+
+        timer.Stop();
+        _logger.Log(
+            timer.ElapsedMilliseconds > 500 ? LogLevel.Information : LogLevel.Debug,
+            "Tag Browser: scanned {Videos} videos for [{Node}] in {Ms} ms",
+            scanned,
+            string.Join(" > ", node),
+            timer.ElapsedMilliseconds);
 
         var pinned = Ordering.ParsePinned(config?.PinnedFolders, separator);
         var sortedFolders = Ordering.SortFolders(
@@ -314,6 +326,28 @@ public class TagBrowserChannel : IChannel, IHasCacheKey
             .SelectMany(v => v.Locations.Select(l => (v.Name, l)))
             .ToList();
     }
+
+    private static string[] StreamMemo(BaseItem item, string key, Func<string[]> compute)
+    {
+        if (StreamCache.TryGetValue((item.Id, key), out var hit) && hit.Modified == item.DateModified)
+        {
+            return hit.Values;
+        }
+
+        if (StreamCache.Count > 250_000)
+        {
+            StreamCache.Clear();
+        }
+
+        var values = compute();
+        StreamCache[(item.Id, key)] = (item.DateModified, values);
+        return values;
+    }
+
+    private static IReadOnlyList<MediaStream> StreamsOf(BaseItem item) => item.GetMediaStreams();
+
+    private static IEnumerable<BaseItem> ParentsOf(BaseItem item)
+        => item is MediaBrowser.Controller.Entities.TV.Episode { Series: { } series } ? new BaseItem[] { series } : Array.Empty<BaseItem>();
 
     private IEnumerable<(string Name, string Kind)> PeopleOf(BaseItem item) => _libraryManager.GetPeople(item).Select(p => (p.Name, p.Type.ToString()));
 

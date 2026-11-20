@@ -103,13 +103,18 @@
 
                     <div class="tbSection">
                         <h3>Property branches</h3>
-                        <div class="tbHint">Each row adds a top-level folder listing every value of that property, e.g. <code>studio</code>, <code>actor</code>, <code>director</code>, <code>genre</code>, <code>year</code>, <code>rating</code>, <code>country</code>, <code>people</code> (not case-sensitive). Only properties Jellyfin imports from the NFO can be used; <code>tag</code> is covered by Tags. Unknown properties show nothing.</div>
+                        <div class="tbHint">Each row adds a top-level folder listing every value of that property. Use Jellyfin's own names (not case-sensitive), e.g. <code>studios</code>, <code>genres</code>, <code>productionYear</code>, <code>person.director</code>, <code>video.codec</code>, <code>audio.language</code>. Pick a suggestion or type any item property; <code>tag</code> is covered by Tags. Names that match nothing show nothing.</div>
+                        <datalist id="PropertyNames"></datalist>
                         <table id="PropertyTable" class="tbTable">
                             <thead><tr><th>Property</th><th>Shown as (optional)</th><th class="tbAct"></th></tr></thead>
                             <tbody></tbody>
                         </table>
                         <div id="PropertyEmpty" class="tbHint" style="text-align:center;font-style:italic;">No property branches yet.</div>
                         <button is="emby-button" type="button" id="AddProperty" class="raised emby-button"><span>Add property</span></button>
+                        <div class="inputContainer" style="margin-top:1em;">
+                            <input is="emby-input" type="text" id="UnknownName" label="Folder for videos without a value" />
+                            <div class="fieldDescription">Inside each property branch, for videos that have no value for it. Leave empty to hide them.</div>
+                        </div>
                     </div>
 
                     <div class="tbSection">
@@ -158,7 +163,7 @@
         <script type="text/javascript">
             (function () {
                 var pluginId = '209c23d2-2b52-4e78-a4d7-3107e770e326';
-                var fields = ['ChannelName', 'Separator', 'BranchTagsName', 'BranchDateName', 'DateDepth', 'UndatedName', 'BranchFoldersName', 'FolderImage', 'VideoOrder', 'PrimaryImagePath', 'ThumbImagePath', 'BackdropImagePath'];
+                var fields = ['ChannelName', 'Separator', 'BranchTagsName', 'BranchDateName', 'DateDepth', 'UndatedName', 'UnknownName', 'BranchFoldersName', 'FolderImage', 'VideoOrder', 'PrimaryImagePath', 'ThumbImagePath', 'BackdropImagePath'];
                 var checks = ['TagsAtTopLevel', 'BranchTags', 'BranchDate', 'BranchFolders', 'DateFromFileName', 'PreferFileNameDate'];
                 var page = document.querySelector('#TagBrowserConfigPage');
 
@@ -172,13 +177,21 @@
                     });
                 }
 
+                function loadSuggestions() {
+                    ApiClient.ajax({ type: 'GET', url: ApiClient.getUrl('TagBrowser/Properties'), dataType: 'json' }).then(function (names) {
+                        if (names && names.length) {
+                            page.querySelector('#PropertyNames').innerHTML = names.map(function (n) { return '<option value="' + n + '">'; }).join('');
+                        }
+                    }, function () { /* no suggestions; names can still be typed */ });
+                }
+
                 function syncEmpty() {
                     page.querySelector('#PropertyEmpty').style.display = page.querySelector('#PropertyTable tbody').children.length ? 'none' : '';
                 }
 
                 function addRow(prop, name) {
                     var tr = document.createElement('tr');
-                    tr.innerHTML = '<td><input type="text" class="propName" placeholder="e.g. studio" /></td><td><input type="text" class="propShown" placeholder="e.g. Studios" /></td><td class="tbAct"><button type="button" class="propRemove" title="Remove">&times;</button></td>';
+                    tr.innerHTML = '<td><input type="text" class="propName" list="PropertyNames" placeholder="e.g. studio" /></td><td><input type="text" class="propShown" placeholder="e.g. Studios" /></td><td class="tbAct"><button type="button" class="propRemove" title="Remove">&times;</button></td>';
                     tr.querySelector('.propName').value = prop || '';
                     tr.querySelector('.propShown').value = name || '';
                     tr.querySelector('.propRemove').addEventListener('click', function () { tr.remove(); syncEmpty(); });
@@ -189,6 +202,7 @@
 
                 page.addEventListener('pageshow', function () {
                     Dashboard.showLoadingMsg();
+                    loadSuggestions();
                     ApiClient.getPluginConfiguration(pluginId).then(function (config) {
                         fields.forEach(function (f) { var el = page.querySelector('#' + f); el.value = config[f] || (el.tagName === 'SELECT' ? el.options[0].value : ''); });
                         checks.forEach(function (c) { page.querySelector('#' + c).checked = !!config[c]; });

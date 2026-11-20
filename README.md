@@ -31,23 +31,72 @@ Other branches can be enabled alongside Tags:
 | Date | `<premiered>`, else the date recorded in the file, else a date in the file name | `Date` → `2022` → `2022-03 March` → `2022-03-20` |
 | Folders | Library folder structure | `Folders` → `Zouk` |
 
+Tags only lists tagged videos; the other branches list all videos of the included libraries.
+
 ### Property branches
 
-Any metadata property can become its own top-level folder, listing every distinct value beneath it. In the settings, add a row to the **Property branches** table: the property name (not case-sensitive) and, optionally, the name shown in the channel. The table is empty by default.
+Any metadata property can become its own top-level folder, listing every distinct value beneath it (studios, actors, year, codec, …). In the settings, add a row to the **Property branches** table:
 
-| Property | Built from | Example path |
-|---|---|---|
-| `genre` | `<genre>` | `Genre` → `Brazilian Zouk` |
-| `studio` | `<studio>` | `Studio` → `Inflow` |
-| `actor`, `director`, `writer`, … | `<actor>`, `<director>`, … (any Jellyfin person role) | `Actor` → `Anna` |
-| `people` | every person, any role | `People` → `Anna` |
-| `year` | `<year>` | `Year` → `2022` |
-| `rating` | `<mpaa>` | `Rating` → `PG` |
-| `country` | `<country>` | `Country` → `Brazil` |
+- **Property** (required): what to group by. Names are Jellyfin's own, not case-sensitive. The settings page suggests them as you type but accepts anything.
+- **Shown as** (optional): the folder name in the channel. Default: the property exactly as you typed it.
 
-Only what Jellyfin imports from the NFO is available; elements Jellyfin ignores cannot be grouped by. Tags have their own branch above, so `tag` is not a property. Unknown names show nothing. A video with several values appears under each.
+The table is empty by default.
 
-Tags only lists tagged videos; the other branches list all videos of the included libraries.
+#### Which properties can I use?
+
+There are three kinds of names. All come straight from Jellyfin, so the plugin does not keep its own list.
+
+**1. Item properties**: any readable property of a Jellyfin video or episode that holds text, numbers, yes/no, a date, an option from a fixed set, or a list of those. Examples: `genres`, `studios`, `productionYear`, `officialRating`, `productionLocations`, `originalTitle`, `container`, `communityRating`, `videoType`, `width`, `height`, `dateCreated`.
+The full set is the public properties of Jellyfin's [`BaseItem`](https://github.com/jellyfin/jellyfin/blob/master/MediaBrowser.Controller/Entities/BaseItem.cs) and [`Video`](https://github.com/jellyfin/jellyfin/blob/master/MediaBrowser.Controller/Entities/Video.cs) classes (and `Episode` for episodes). Type the property name as it is written there. Use the version of the source that matches your Jellyfin server; the properties can change between versions.
+
+**2. People**: `person.<role>`, where the role is one of Jellyfin's person kinds, e.g. `person.actor`, `person.director`, `person.writer`, `person.producer`, `person.guestStar`, `person.composer`. People are stored separately from the item, so they have no plain property name.
+
+**3. Stream properties**: what is inside the file. Use `video.`, `audio.` or `subtitle.` followed by any property of Jellyfin's [`MediaStream`](https://github.com/jellyfin/jellyfin/blob/master/MediaBrowser.Model/Entities/MediaStream.cs), e.g. `video.codec`, `video.height`, `video.bitDepth`, `audio.language`, `audio.channels`, `audio.channelLayout`, `subtitle.language`. A video with several audio tracks appears under each value.
+
+Not usable: `tag` (tags have their own branch above), and anything that is not text, a number, yes/no, a date or an option (such as images or nested objects). A name that matches nothing shows nothing, which makes typos easy to spot.
+
+#### What the NFO fills in
+
+The plugin groups by what Jellyfin imported, not by the NFO file itself, so an NFO element only helps if Jellyfin reads it. From Jellyfin's [NFO parser](https://github.com/jellyfin/jellyfin/blob/master/MediaBrowser.XbmcMetadata/Parsers/BaseNfoParser.cs):
+
+| NFO element | Property to use |
+|---|---|
+| `<genre>` | `genres` |
+| `<studio>` | `studios` |
+| `<year>` | `productionYear` |
+| `<mpaa>` | `officialRating` |
+| `<country>` (several separated by `/` inside one element; a second `<country>` element replaces the first) | `productionLocations` |
+| `<countrycode>` | `preferredMetadataCountryCode` |
+| `<language>` | `preferredMetadataLanguage` |
+| `<originaltitle>` | `originalTitle` |
+| `<title>` / `<name>` | `name` |
+| `<premiered>`, `<aired>`, `<releasedate>` | `premiereDate` (the Date branch is usually better) |
+| `<rating>` | `communityRating` |
+| `<criticrating>` | `criticRating` |
+| `<customrating>` | `customRating` |
+| `<tagline>` | `tagline` |
+| `<actor>`, `<director>`, `<writer>`, `<credits>` | `person.actor`, `person.director`, `person.writer`, `person.writer` (`<credits>` is split on `/`) |
+| `<tag>` | not a property; the Tags branch |
+
+Elements not in this table (for example a made-up `<mood>`) are ignored by Jellyfin, so they cannot be grouped by. Properties that are different for every video (`name`, `path`, `video.bitRate`) give one folder per value, which is rarely what you want.
+
+#### Examples
+
+| Row (Property → Shown as) | Result |
+|---|---|
+| `studios` | `studios` → `Inflow` |
+| `studios` → `Studio` | `Studio` → `Inflow` |
+| `person.director` → `Director` | `Director` → `Anna`, and `Director` → `Unknown` for videos without one |
+| `video.codec` → `Codec` | `Codec` → `h264` |
+| `audio.language` → `Audio` | `Audio` → `eng`, `Audio` → `por` |
+
+**Folders with the same name merge.** If two rows have the same *Shown as* name, they become one folder holding the values of both. The same happens with tags: a tag such as `studio: inflow` already creates a top-level `studio` folder, so a `studios` row shown as `studio` adds Jellyfin's studios to that same folder. A video that appears under both is listed once. Give the row a different name if you do not want this.
+
+**Videos without a value** go into an **Unknown** folder inside that branch. Rename or hide it with *Folder for videos without a value*. A misspelt property does not create Unknown; it shows nothing.
+
+**TV episodes** also get their series' values, because Jellyfin stores genres, studios, countries and people on the series, not the episodes. `productionYear` and `officialRating` come from the series only when the episode has none. Tags are not inherited.
+
+**Speed.** Stream values are read from Jellyfin's database, remembered per video until the file changes, and only read when a stream row is configured. The first listing after a restart is the slow one (about a second per thousand videos on a Raspberry Pi); slow listings are logged.
 
 ## Requirements
 
@@ -74,6 +123,7 @@ Tags only lists tagged videos; the other branches list all videos of the include
 | Tags at the top level | On | Tags appear alongside the other branches. Off: grouped under the Tags branch. |
 | Branches | Tags, Date | Tick to enable; each has a name. |
 | Property branches | none | Table of properties to group by (see above). |
+| Folder for videos without a value | `Unknown` | Inside each property branch. Empty = hidden. |
 | Date branch depth | Year › Month › Day | Or: year, year › month. |
 | Date from file name | On | Used when the video has no date (`20220213_180246`, `VID-20250924-WA0005`). |
 | Prefer file-name date | Off | Use the file-name date instead of the recorded time (which is UTC). |

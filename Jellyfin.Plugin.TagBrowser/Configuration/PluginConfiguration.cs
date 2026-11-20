@@ -101,6 +101,12 @@ public class PluginConfiguration : BasePluginConfiguration
     [System.Diagnostics.CodeAnalysis.SuppressMessage("Usage", "CA1819:Properties should not return arrays", Justification = "Plugin settings are serialised as plain arrays.")]
     public PropertyBranch[] PropertyBranches { get; set; } = System.Array.Empty<PropertyBranch>();
 
+    /// <summary>
+    /// Gets or sets the folder, inside each property branch, for videos that have no value for that property.
+    /// Empty hides them.
+    /// </summary>
+    public string UnknownName { get; set; } = "Unknown";
+
     /// <summary>Gets or sets a value indicating whether a date in the file name is used when the video has no date.</summary>
     public bool DateFromFileName { get; set; } = true;
 
