@@ -98,6 +98,47 @@ Elements not in this table (for example a made-up `<mood>`) are ignored by Jelly
 
 **Speed.** Stream values are read from Jellyfin's database, remembered per video until the file changes, and only read when a stream row is configured. The first listing after a restart is the slow one (about a second per thousand videos on a Raspberry Pi); slow listings are logged.
 
+## Channels
+
+By default the plugin adds one channel, **Tag Browser**. Two settings change that.
+
+- **Show the main channel.** Off hides it completely.
+- **Separate channels.** A table where each row promotes one branch of the tree to a channel of its own (up to 10). *Branch* is a folder as shown in the tree, using the tag separator for levels; *Channel name* is optional and defaults to the last part of the branch.
+
+| Branch | Channel opens at |
+|---|---|
+| `dance` | what is under the `dance` tag: `dance: zouk` and `dance: wcs` appear as `zouk` and `wcs` |
+| `dance: zouk` | the `zouk` folder directly |
+| `Studios` | a property branch, by its shown name: every studio |
+| `Date` | the Date branch |
+
+A promoted branch is **moved, not copied**: it leaves the main channel (and any outer promoted branch), so each video is listed in one place. Jellyfin treats a video listed in two channels as two unrelated items with separate watched states, so showing a branch twice would make the existing watched-state limitation worse. Matching ignores case. Rows without a branch, repeating a branch, or reusing a channel name (including the main one's) are ignored.
+
+### How this works, and what we would like advice on
+
+This is what the plugin does today. We are not sure it is the best way, and guidance from people who know Jellyfin's channel code better is very welcome.
+
+Jellyfin builds its list of channels once, at startup, from the `IChannel` services a plugin registers. Settings, however, change while the server runs. So the plugin registers the main channel plus **10 spare channels** (all the same class, `PromotedTagChannel`). A spare channel answers `IsEnabledFor` with *false* until a row in the table assigns it a branch, which keeps it out of the channel list; once assigned, it takes its name and starting folder from the settings. Because a channel's id comes from its name, which slot hosts a row does not matter. Saving the settings runs *Refresh Channels*.
+
+We tried this on Jellyfin 12.4 with a throwaway channel. Switching a channel on or off, and renaming it, took effect without restarting the server.
+
+What it costs:
+
+- **A fixed limit of 10** promoted channels, set in the code.
+- **A hidden database row per channel.** Jellyfin creates a row for each registered channel at startup, even while it is switched off: ten small rows named `Tag Browser spare 1` … `10`, never shown in a client.
+- **Renaming a promoted channel creates a new channel** (the id comes from the name) and starts its videos' watched state again. The old channel's database row stays for a while; in our tests it was gone again after later settings saves and restarts, but we have not looked closely at when Jellyfin removes it. The same already applies to renaming the main channel.
+- **Channel names must be unique**, as they are the id.
+
+Alternatives we considered: registering exactly as many channels as are configured, which would remove the limit and the hidden rows but needs a server restart after every change and needs the plugin to read its own settings file before Jellyfin has loaded them. We also looked at Jellyfin collections instead of channels, which would give one watched state and the normal library view, but they do not nest and clutter the library.
+
+Questions for the Jellyfin developers and plugin authors:
+
+- Is registering several channels from one plugin like this acceptable, or is there a supported way to add and remove channels while the server runs?
+- Does Jellyfin reliably remove the database rows of channels that no longer exist (renamed or unassigned), and when? Is there a supported way to trigger it?
+- Is there a better way to keep watched state in one place than separate items per channel and folder?
+
+Please open an issue or reply in the discussion.
+
 ## Requirements
 
 - Jellyfin **12.4.0**.
@@ -119,6 +160,8 @@ Elements not in this table (for example a made-up `<mood>`) are ignored by Jelly
 |---|---|---|
 | Channel name | `Tag Browser` | Renaming creates a new channel; watched state of its items resets. |
 | Tag separator | `:` | Matched exactly. Empty = no nesting. |
+| Show the main channel | On | Off hides the Tag Browser channel; promoted channels stay. |
+| Separate channels | none | Table of branches promoted to channels of their own (up to 10); see [Channels](#channels). |
 | Libraries | All | Only videos from ticked libraries appear. |
 | Tags at the top level | On | Tags appear alongside the other branches. Off: grouped under the Tags branch. |
 | Branches | Tags, Date | Tick to enable; each has a name. |

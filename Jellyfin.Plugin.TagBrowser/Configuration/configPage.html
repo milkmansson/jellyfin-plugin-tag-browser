@@ -118,6 +118,23 @@
                     </div>
 
                     <div class="tbSection">
+                        <h3>Channels</h3>
+                        <div class="tbHint">Jellyfin shows each channel as its own entry. By default there is one, the Tag Browser. You can turn it off, and promote any branch to a channel of its own.</div>
+                        <div class="checkboxContainer checkboxContainer-withDescription">
+                            <label><input is="emby-checkbox" type="checkbox" id="MainChannelEnabled" /><span>Show the main channel</span></label>
+                            <div class="fieldDescription checkboxFieldDescription">Off hides the main channel. Channels promoted below stay.</div>
+                        </div>
+                        <h4 style="margin:1em 0 .2em;">Separate channels</h4>
+                        <div class="tbHint">Each row turns one branch into its own channel (up to 10). <b>Branch</b> is a branch or folder as shown in the tree, using the tag separator for levels: <code>dance</code> opens a channel showing what is under the <code>dance</code> tag (so <code>dance: zouk</code> appears as <code>zouk</code>), <code>dance: zouk</code> opens at that folder, and a property branch uses its shown name, e.g. <code>Studios</code>. A promoted branch is <b>moved</b>, not copied: it leaves the main channel, so each video is listed in one place. Renaming a channel creates a new one, and the watched state of its videos starts again. Changes apply when you save.</div>
+                        <table id="ChannelTable" class="tbTable">
+                            <thead><tr><th>Branch</th><th>Channel name (optional)</th><th class="tbAct"></th></tr></thead>
+                            <tbody></tbody>
+                        </table>
+                        <div id="ChannelEmpty" class="tbHint" style="text-align:center;font-style:italic;">No separate channels yet.</div>
+                        <button is="emby-button" type="button" id="AddChannel" class="raised emby-button"><span>Add channel</span></button>
+                    </div>
+
+                    <div class="tbSection">
                         <h3>Appearance</h3>
                         <div class="selectContainer">
                             <select is="emby-select" id="FolderImage" label="Folder image">
@@ -164,7 +181,7 @@
             (function () {
                 var pluginId = '209c23d2-2b52-4e78-a4d7-3107e770e326';
                 var fields = ['ChannelName', 'Separator', 'BranchTagsName', 'BranchDateName', 'DateDepth', 'UndatedName', 'UnknownName', 'BranchFoldersName', 'FolderImage', 'VideoOrder', 'PrimaryImagePath', 'ThumbImagePath', 'BackdropImagePath'];
-                var checks = ['TagsAtTopLevel', 'BranchTags', 'BranchDate', 'BranchFolders', 'DateFromFileName', 'PreferFileNameDate'];
+                var checks = ['TagsAtTopLevel', 'MainChannelEnabled', 'BranchTags', 'BranchDate', 'BranchFolders', 'DateFromFileName', 'PreferFileNameDate'];
                 var page = document.querySelector('#TagBrowserConfigPage');
 
                 function renderLibraries(config) {
@@ -189,6 +206,23 @@
                     page.querySelector('#PropertyEmpty').style.display = page.querySelector('#PropertyTable tbody').children.length ? 'none' : '';
                 }
 
+                function syncChannelEmpty() {
+                    var rows = page.querySelector('#ChannelTable tbody').children.length;
+                    page.querySelector('#ChannelEmpty').style.display = rows ? 'none' : '';
+                    page.querySelector('#AddChannel').disabled = rows >= 10;
+                }
+
+                function addChannelRow(path, name) {
+                    var tr = document.createElement('tr');
+                    tr.innerHTML = '<td><input type="text" class="chPath" placeholder="e.g. dance" /></td><td><input type="text" class="chName" placeholder="e.g. Dance" /></td><td class="tbAct"><button type="button" class="chRemove" title="Remove">&times;</button></td>';
+                    tr.querySelector('.chPath').value = path || '';
+                    tr.querySelector('.chName').value = name || '';
+                    tr.querySelector('.chRemove').addEventListener('click', function () { tr.remove(); syncChannelEmpty(); });
+                    page.querySelector('#ChannelTable tbody').appendChild(tr);
+                    syncChannelEmpty();
+                }
+                page.querySelector('#AddChannel').addEventListener('click', function () { addChannelRow('', ''); });
+
                 function addRow(prop, name) {
                     var tr = document.createElement('tr');
                     tr.innerHTML = '<td><input type="text" class="propName" list="PropertyNames" placeholder="e.g. studio" /></td><td><input type="text" class="propShown" placeholder="e.g. Studios" /></td><td class="tbAct"><button type="button" class="propRemove" title="Remove">&times;</button></td>';
@@ -206,6 +240,9 @@
                     ApiClient.getPluginConfiguration(pluginId).then(function (config) {
                         fields.forEach(function (f) { var el = page.querySelector('#' + f); el.value = config[f] || (el.tagName === 'SELECT' ? el.options[0].value : ''); });
                         checks.forEach(function (c) { page.querySelector('#' + c).checked = !!config[c]; });
+                        page.querySelector('#ChannelTable tbody').innerHTML = '';
+                        (config.PromotedChannels || []).forEach(function (r) { addChannelRow(r.Path, r.Name); });
+                        syncChannelEmpty();
                         page.querySelector('#PropertyTable tbody').innerHTML = '';
                         syncEmpty();
                         (config.PropertyBranches || []).forEach(function (r) { addRow(r.Property, r.DisplayName); });
@@ -222,6 +259,9 @@
                         config.PropertyBranches = Array.prototype.map.call(page.querySelectorAll('#PropertyTable tbody tr'), function (tr) {
                             return { Property: tr.querySelector('.propName').value.trim(), DisplayName: tr.querySelector('.propShown').value.trim() };
                         }).filter(function (r) { return r.Property; });
+                        config.PromotedChannels = Array.prototype.map.call(page.querySelectorAll('#ChannelTable tbody tr'), function (tr) {
+                            return { Path: tr.querySelector('.chPath').value.trim(), Name: tr.querySelector('.chName').value.trim() };
+                        }).filter(function (r) { return r.Path; }).slice(0, 10);
                         config.Libraries = Array.prototype.map.call(page.querySelectorAll('.libCheck:checked'), function (x) { return x.value; }).join(',');
                         if (!config.ChannelName.trim()) { config.ChannelName = 'Tag Browser'; }
                         ApiClient.updatePluginConfiguration(pluginId, config).then(function (result) {

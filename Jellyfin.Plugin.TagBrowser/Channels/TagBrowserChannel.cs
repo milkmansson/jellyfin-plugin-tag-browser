@@ -29,7 +29,7 @@ public class TagBrowserChannel : IChannel, IHasCacheKey
     private readonly ILogger<TagBrowserChannel> _logger;
     private static readonly System.Collections.Concurrent.ConcurrentDictionary<(Guid Id, string Key), (DateTime Modified, string[] Values)> StreamCache = new();
     private static readonly long StartedAt = DateTime.UtcNow.Ticks;
-    private long _libraryVersion;
+    private static long _libraryVersion;
 
     /// <summary>
     /// Initializes a new instance of the <see cref="TagBrowserChannel"/> class.
@@ -38,20 +38,37 @@ public class TagBrowserChannel : IChannel, IHasCacheKey
     /// <param name="userManager">The user manager.</param>
     /// <param name="logger">The logger.</param>
     public TagBrowserChannel(ILibraryManager libraryManager, IUserManager userManager, ILogger<TagBrowserChannel> logger)
+        : this(libraryManager, userManager, logger, true)
+    {
+    }
+
+    /// <summary>
+    /// Initializes a new instance of the <see cref="TagBrowserChannel"/> class.
+    /// </summary>
+    /// <param name="libraryManager">The library manager.</param>
+    /// <param name="userManager">The user manager.</param>
+    /// <param name="logger">The logger.</param>
+    /// <param name="watchLibrary">Whether this instance bumps the shared cache version on library changes (once per server is enough).</param>
+    protected TagBrowserChannel(ILibraryManager libraryManager, IUserManager userManager, ILogger<TagBrowserChannel> logger, bool watchLibrary)
     {
         _libraryManager = libraryManager;
         _userManager = userManager;
         _logger = logger;
 
-        // Any library change may change tags; bump the version so Jellyfin re-queries the channel.
-        // Channel items (including ours) are ignored, otherwise every listing would trigger another.
-        _libraryManager.ItemAdded += OnLibraryChanged;
-        _libraryManager.ItemUpdated += OnLibraryChanged;
-        _libraryManager.ItemRemoved += OnLibraryChanged;
+        if (watchLibrary)
+        {
+            // Any library change may change tags; bump the version so Jellyfin re-queries the channels.
+            // Channel items (including ours) are ignored, otherwise every listing would trigger another.
+            _libraryManager.ItemAdded += OnLibraryChanged;
+            _libraryManager.ItemUpdated += OnLibraryChanged;
+            _libraryManager.ItemRemoved += OnLibraryChanged;
+        }
     }
 
-    /// <inheritdoc />
-    public string Name
+    /// <summary>
+    /// Gets the main channel's name from the settings.
+    /// </summary>
+    protected static string MainChannelName
     {
         get
         {
@@ -61,7 +78,10 @@ public class TagBrowserChannel : IChannel, IHasCacheKey
     }
 
     /// <inheritdoc />
-    public string Description => "Browse your library by tag.";
+    public virtual string Name => MainChannelName;
+
+    /// <inheritdoc />
+    public virtual string Description => "Browse your library by tag.";
 
     /// <inheritdoc />
     public string DataVersion => "3";
@@ -71,6 +91,11 @@ public class TagBrowserChannel : IChannel, IHasCacheKey
 
     /// <inheritdoc />
     public ChannelParentalRating ParentalRating => ChannelParentalRating.GeneralAudience;
+
+    /// <summary>
+    /// Gets the tree path this channel opens at; empty for the main channel.
+    /// </summary>
+    protected virtual IReadOnlyList<string> RootNode => Array.Empty<string>();
 
     private static string Separator => Plugin.Instance?.Configuration.Separator ?? ":";
 
@@ -85,7 +110,7 @@ public class TagBrowserChannel : IChannel, IHasCacheKey
     }
 
     /// <inheritdoc />
-    public bool IsEnabledFor(string userId) => true;
+    public virtual bool IsEnabledFor(string userId) => Plugin.Instance?.Configuration.MainChannelEnabled ?? true;
 
     private void OnLibraryChanged(object? sender, ItemChangeEventArgs e)
     {
@@ -106,8 +131,20 @@ public class TagBrowserChannel : IChannel, IHasCacheKey
     /// <inheritdoc />
     public async Task<ChannelItemResult> GetChannelItems(InternalChannelItemQuery query, CancellationToken cancellationToken)
     {
-        var node = TagTree.FromFolderId(query.FolderId);
         var config = Plugin.Instance?.Configuration;
+        if (!IsEnabledFor(string.Empty))
+        {
+            return new ChannelItemResult();
+        }
+
+        var node = TagTree.FromFolderId(query.FolderId);
+        if (node.Length == 0)
+        {
+            node = RootNode.ToArray();
+        }
+
+        var root = RootNode;
+        var promotedRoots = ChannelPlan.Promoted(config ?? new Configuration.PluginConfiguration(), Separator, MainChannelName).Select(p => p.Root).ToList();
         var separator = Separator;
         var videoOrder = config?.VideoOrder ?? "Title";
 
@@ -125,7 +162,7 @@ public class TagBrowserChannel : IChannel, IHasCacheKey
             var placedHere = false;
             foreach (var path in branches.PathsFor(item))
             {
-                if (path.Length == 0 || !TagTree.StartsWith(path, node))
+                if (path.Length == 0 || !TagTree.StartsWith(path, node) || ChannelPlan.IsMovedOut(path, root, promotedRoots))
                 {
                     continue;
                 }

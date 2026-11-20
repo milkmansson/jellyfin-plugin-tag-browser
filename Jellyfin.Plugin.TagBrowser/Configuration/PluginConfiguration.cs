@@ -19,6 +19,16 @@ public class PluginConfiguration : BasePluginConfiguration
     /// </summary>
     public string ChannelName { get; set; } = DefaultChannelName;
 
+    /// <summary>Gets or sets a value indicating whether the main Tag Browser channel is shown.</summary>
+    public bool MainChannelEnabled { get; set; } = true;
+
+    /// <summary>
+    /// Gets or sets the branches promoted to channels of their own (at most 10). A promoted branch is moved out of
+    /// the other channels, not copied.
+    /// </summary>
+    [System.Diagnostics.CodeAnalysis.SuppressMessage("Usage", "CA1819:Properties should not return arrays", Justification = "Plugin settings are serialised as plain arrays.")]
+    public PromotedChannel[] PromotedChannels { get; set; } = System.Array.Empty<PromotedChannel>();
+
     /// <summary>
     /// Gets or sets the separator that splits a tag into tree levels, e.g. "move: cambre".
     /// Empty means tags are not split.
