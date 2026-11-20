@@ -1,7 +1,14 @@
 // SPDX-License-Identifier: GPL-3.0-or-later
 using System;
 using System.Collections.Generic;
+using System.IO;
+using System.Threading;
+using System.Threading.Tasks;
 using MediaBrowser.Controller.Library;
+using MediaBrowser.Controller.Providers;
+using MediaBrowser.Model.Drawing;
+using MediaBrowser.Model.Entities;
+using MediaBrowser.Model.MediaInfo;
 using Microsoft.Extensions.Logging;
 
 namespace Jellyfin.Plugin.TagBrowser.Channels;
@@ -49,6 +56,35 @@ public sealed class PromotedTagChannel : TagBrowserChannel
             var plans = ChannelPlan.Promoted(config, config.Separator, MainChannelName);
             return _slot <= plans.Count ? plans[_slot - 1] : null;
         }
+    }
+
+    /// <summary>
+    /// The channel's tile is a thumbnail of one of its videos, chosen by the folder image settings; the logo
+    /// (or the custom image) when the settings say so or no video has a thumbnail.
+    /// </summary>
+    /// <param name="type">The image type.</param>
+    /// <param name="cancellationToken">The cancellation token.</param>
+    /// <returns>The image.</returns>
+    public override Task<DynamicImageResponse> GetChannelImage(ImageType type, CancellationToken cancellationToken)
+    {
+        var config = Plugin.Instance?.Configuration;
+        if (type is ImageType.Primary or ImageType.Thumb && Assigned is { } plan && config is not null)
+        {
+            var folderId = TagTree.ToFolderId(plan.Root);
+            var path = FolderImagePath(VideosUnder(plan.Root), folderId, config.VideoOrder, config.FolderImage);
+            if (path is not null && File.Exists(path) && !string.Equals(path, Plugin.Instance?.GetFolderLogoPath(), StringComparison.Ordinal))
+            {
+                return Task.FromResult(new DynamicImageResponse
+                {
+                    HasImage = true,
+                    Path = path,
+                    Protocol = MediaProtocol.File,
+                    Format = System.IO.Path.GetExtension(path).ToLowerInvariant() switch { ".jpg" or ".jpeg" => ImageFormat.Jpg, ".webp" => ImageFormat.Webp, ".gif" => ImageFormat.Gif, _ => ImageFormat.Png },
+                });
+            }
+        }
+
+        return base.GetChannelImage(type, cancellationToken);
     }
 
     /// <inheritdoc />

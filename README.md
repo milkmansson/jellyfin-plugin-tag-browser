@@ -112,7 +112,7 @@ By default the plugin adds one channel, **Tag Browser**. Two settings change tha
 | `Studios` | a property branch, by its shown name: every studio |
 | `Date` | the Date branch |
 
-A promoted branch is **moved, not copied**: it leaves the main channel (and any outer promoted branch), so each video is listed in one place. Jellyfin treats a video listed in two channels as two unrelated items with separate watched states, so showing a branch twice would make the existing watched-state limitation worse. Matching ignores case. Rows without a branch, repeating a branch, or reusing a channel name (including the main one's) are ignored.
+A promoted branch is **moved, not copied**: it leaves the main channel (and any outer promoted branch), so each video is listed in one place. Jellyfin treats a video listed in two channels as two unrelated items with separate watched states, so showing a branch twice would make the existing watched-state limitation worse. Matching ignores case. A promoted channel's tile is a thumbnail of one of its videos, following the *Folder image* and *Folder thumbnail taken from* settings (the logo, or your custom image, if you choose Logo or None or no video has a thumbnail). Rows without a branch, repeating a branch, or reusing a channel name (including the main one's) are ignored.
 
 ### How this works, and what we would like advice on
 
@@ -126,7 +126,7 @@ What it costs:
 
 - **A fixed limit of 10** promoted channels, set in the code.
 - **A hidden database row per channel.** Jellyfin creates a row for each registered channel at startup, even while it is switched off: ten small rows named `Tag Browser spare 1` … `10`, never shown in a client.
-- **Renaming a promoted channel creates a new channel** (the id comes from the name) and starts its videos' watched state again. The old channel's database row stays for a while; in our tests it was gone again after later settings saves and restarts, but we have not looked closely at when Jellyfin removes it. The same already applies to renaming the main channel.
+- **Renaming a promoted channel creates a new channel** (the id comes from the name) and starts its videos' watched state again. Jellyfin removed the old channel's database row within seconds of the next channel refresh in our tests, but we have not checked this thoroughly. The same already applies to renaming the main channel.
 - **Channel names must be unique**, as they are the id.
 
 Alternatives we considered: registering exactly as many channels as are configured, which would remove the limit and the hidden rows but needs a server restart after every change and needs the plugin to read its own settings file before Jellyfin has loaded them. We also looked at Jellyfin collections instead of channels, which would give one watched state and the normal library view, but they do not nest and clutter the library.
@@ -134,7 +134,7 @@ Alternatives we considered: registering exactly as many channels as are configur
 Questions for the Jellyfin developers and plugin authors:
 
 - Is registering several channels from one plugin like this acceptable, or is there a supported way to add and remove channels while the server runs?
-- Does Jellyfin reliably remove the database rows of channels that no longer exist (renamed or unassigned), and when? Is there a supported way to trigger it?
+- Does Jellyfin reliably remove the database rows of channels that no longer exist (renamed or unassigned)? It did in our tests.
 - Is there a better way to keep watched state in one place than separate items per channel and folder?
 
 Please open an issue or reply in the discussion.

@@ -238,7 +238,7 @@ public class TagBrowserChannel : IChannel, IHasCacheKey
     }
 
     /// <inheritdoc />
-    public Task<DynamicImageResponse> GetChannelImage(ImageType type, CancellationToken cancellationToken)
+    public virtual Task<DynamicImageResponse> GetChannelImage(ImageType type, CancellationToken cancellationToken)
     {
         var config = Plugin.Instance?.Configuration;
         var (customPath, resource) = type switch
@@ -303,7 +303,15 @@ public class TagBrowserChannel : IChannel, IHasCacheKey
         await _libraryManager.UpdateItemAsync(existing, existing.GetParent(), ItemUpdateType.ImageUpdate, cancellationToken).ConfigureAwait(false);
     }
 
-    private static string? FolderImagePath(List<BaseItem> videos, string folderId, string videoOrder, string folderImage)
+    /// <summary>
+    /// The image for a folder (or a promoted channel): a thumbnail of one of its videos, or the logo, per the settings.
+    /// </summary>
+    /// <param name="videos">The videos under the folder.</param>
+    /// <param name="folderId">The folder id (keeps a random pick stable).</param>
+    /// <param name="videoOrder">Which video provides the thumbnail.</param>
+    /// <param name="folderImage">FirstVideo, Logo or None.</param>
+    /// <returns>The image path, or null for none.</returns>
+    protected static string? FolderImagePath(IReadOnlyList<BaseItem> videos, string folderId, string videoOrder, string folderImage)
     {
         if (string.Equals(folderImage, "None", StringComparison.Ordinal))
         {
@@ -317,7 +325,7 @@ public class TagBrowserChannel : IChannel, IHasCacheKey
                 : Ordering.SortVideos(videos, videoOrder);
             var thumb = candidates
                 .Select(v => v.GetImagePath(ImageType.Primary))
-                .FirstOrDefault(path => !string.IsNullOrEmpty(path));
+                .FirstOrDefault(path => !string.IsNullOrEmpty(path) && File.Exists(path));
             if (thumb is not null)
             {
                 return thumb;
@@ -325,6 +333,21 @@ public class TagBrowserChannel : IChannel, IHasCacheKey
         }
 
         return Plugin.Instance?.GetFolderLogoPath();
+    }
+
+    /// <summary>
+    /// The videos listed under a tree path in this channel (after promoted branches have moved out).
+    /// </summary>
+    /// <param name="root">The tree path.</param>
+    /// <returns>The videos.</returns>
+    protected IReadOnlyList<BaseItem> VideosUnder(IReadOnlyList<string> root)
+    {
+        var config = Plugin.Instance?.Configuration ?? new Configuration.PluginConfiguration();
+        var branches = new Branches(config, GetLibraryLocations(), PeopleOf, ParentsOf, StreamsOf, StreamMemo);
+        var promotedRoots = ChannelPlan.Promoted(config, Separator, MainChannelName).Select(p => p.Root).ToList();
+        return GetSourceVideos(Guid.Empty)
+            .Where(i => branches.PathsFor(i).Any(p => p.Length > 0 && TagTree.StartsWith(p, root) && !ChannelPlan.IsMovedOut(p, root, promotedRoots)))
+            .ToList();
     }
 
     private IEnumerable<BaseItem> GetSourceVideos(Guid userId)
