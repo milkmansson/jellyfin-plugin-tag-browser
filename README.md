@@ -193,8 +193,11 @@ Based on [jellyfin-plugin-template](https://github.com/jellyfin/jellyfin-plugin-
 - **Unit tests** (`Jellyfin.Plugin.TagBrowser.Tests`).
 - **No Renovate or VS Code settings.**
 
+## Disclaimer
+
+AI was used heavily throughout the writing of this code.  It has automatic tests which AI uses, and has been manually tested and bugfixed against Jellyfin servers by humans too. Please use this at your own risk.
+
 ## License
 
-Copyright (C) 2026 milkmansson. GPL-3.0-or-later; see [LICENSE](LICENSE).
-
+GPL-3.0-or-later; see [LICENSE](LICENSE).
 SPDX-License-Identifier: GPL-3.0-or-later
