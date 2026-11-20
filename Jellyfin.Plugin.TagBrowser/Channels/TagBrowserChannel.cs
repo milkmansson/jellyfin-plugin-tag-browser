@@ -27,8 +27,9 @@ public class TagBrowserChannel : IChannel, IHasCacheKey
     private readonly ILibraryManager _libraryManager;
     private readonly IUserManager _userManager;
     private readonly ILogger<TagBrowserChannel> _logger;
+    private static readonly System.Collections.Concurrent.ConcurrentDictionary<(Guid Id, string Key), (DateTime Modified, string[] Values)> StreamCache = new();
     private static readonly long StartedAt = DateTime.UtcNow.Ticks;
-    private long _libraryVersion;
+    private static long _libraryVersion;
 
     /// <summary>
     /// Initializes a new instance of the <see cref="TagBrowserChannel"/> class.
@@ -37,20 +38,37 @@ public class TagBrowserChannel : IChannel, IHasCacheKey
     /// <param name="userManager">The user manager.</param>
     /// <param name="logger">The logger.</param>
     public TagBrowserChannel(ILibraryManager libraryManager, IUserManager userManager, ILogger<TagBrowserChannel> logger)
+        : this(libraryManager, userManager, logger, true)
+    {
+    }
+
+    /// <summary>
+    /// Initializes a new instance of the <see cref="TagBrowserChannel"/> class.
+    /// </summary>
+    /// <param name="libraryManager">The library manager.</param>
+    /// <param name="userManager">The user manager.</param>
+    /// <param name="logger">The logger.</param>
+    /// <param name="watchLibrary">Whether this instance bumps the shared cache version on library changes (once per server is enough).</param>
+    protected TagBrowserChannel(ILibraryManager libraryManager, IUserManager userManager, ILogger<TagBrowserChannel> logger, bool watchLibrary)
     {
         _libraryManager = libraryManager;
         _userManager = userManager;
         _logger = logger;
 
-        // Any library change may change tags; bump the version so Jellyfin re-queries the channel.
-        // Channel items (including ours) are ignored, otherwise every listing would trigger another.
-        _libraryManager.ItemAdded += OnLibraryChanged;
-        _libraryManager.ItemUpdated += OnLibraryChanged;
-        _libraryManager.ItemRemoved += OnLibraryChanged;
+        if (watchLibrary)
+        {
+            // Any library change may change tags; bump the version so Jellyfin re-queries the channels.
+            // Channel items (including ours) are ignored, otherwise every listing would trigger another.
+            _libraryManager.ItemAdded += OnLibraryChanged;
+            _libraryManager.ItemUpdated += OnLibraryChanged;
+            _libraryManager.ItemRemoved += OnLibraryChanged;
+        }
     }
 
-    /// <inheritdoc />
-    public string Name
+    /// <summary>
+    /// Gets the main channel's name from the settings.
+    /// </summary>
+    protected static string MainChannelName
     {
         get
         {
@@ -60,7 +78,10 @@ public class TagBrowserChannel : IChannel, IHasCacheKey
     }
 
     /// <inheritdoc />
-    public string Description => "Browse your library by tag.";
+    public virtual string Name => MainChannelName;
+
+    /// <inheritdoc />
+    public virtual string Description => "Browse your library by tag.";
 
     /// <inheritdoc />
     public string DataVersion => "3";
@@ -70,6 +91,11 @@ public class TagBrowserChannel : IChannel, IHasCacheKey
 
     /// <inheritdoc />
     public ChannelParentalRating ParentalRating => ChannelParentalRating.GeneralAudience;
+
+    /// <summary>
+    /// Gets the tree path this channel opens at; empty for the main channel.
+    /// </summary>
+    protected virtual IReadOnlyList<string> RootNode => Array.Empty<string>();
 
     private static string Separator => Plugin.Instance?.Configuration.Separator ?? ":";
 
@@ -84,7 +110,7 @@ public class TagBrowserChannel : IChannel, IHasCacheKey
     }
 
     /// <inheritdoc />
-    public bool IsEnabledFor(string userId) => true;
+    public virtual bool IsEnabledFor(string userId) => Plugin.Instance?.Configuration.MainChannelEnabled ?? true;
 
     private void OnLibraryChanged(object? sender, ItemChangeEventArgs e)
     {
@@ -103,10 +129,22 @@ public class TagBrowserChannel : IChannel, IHasCacheKey
         => $"{StartedAt}-{Interlocked.Read(ref _libraryVersion)}-{Plugin.Instance?.ConfigurationVersion ?? 0}";
 
     /// <inheritdoc />
-    public async Task<ChannelItemResult> GetChannelItems(InternalChannelItemQuery query, CancellationToken cancellationToken)
+    public virtual async Task<ChannelItemResult> GetChannelItems(InternalChannelItemQuery query, CancellationToken cancellationToken)
     {
-        var node = TagTree.FromFolderId(query.FolderId);
         var config = Plugin.Instance?.Configuration;
+        if (!IsEnabledFor(string.Empty))
+        {
+            return new ChannelItemResult();
+        }
+
+        var node = TagTree.FromFolderId(query.FolderId);
+        if (node.Length == 0)
+        {
+            node = RootNode.ToArray();
+        }
+
+        var root = RootNode;
+        var promotedRoots = ChannelPlan.Promoted(config ?? new Configuration.PluginConfiguration(), Separator, MainChannelName).Select(p => p.Root).ToList();
         var separator = Separator;
         var videoOrder = config?.VideoOrder ?? "Title";
 
@@ -114,14 +152,17 @@ public class TagBrowserChannel : IChannel, IHasCacheKey
         var folders = new Dictionary<string, (string Name, Dictionary<Guid, BaseItem> Videos)>(StringComparer.OrdinalIgnoreCase);
         var media = new List<BaseItem>();
 
-        var branches = new Branches(config ?? new Configuration.PluginConfiguration(), GetLibraryLocations(), PeopleOf);
+        var branches = new Branches(config ?? new Configuration.PluginConfiguration(), GetLibraryLocations(), PeopleOf, ParentsOf, StreamsOf, StreamMemo);
 
+        var timer = System.Diagnostics.Stopwatch.StartNew();
+        var scanned = 0;
         foreach (var item in GetSourceVideos(query.UserId))
         {
+            scanned++;
             var placedHere = false;
             foreach (var path in branches.PathsFor(item))
             {
-                if (path.Length == 0 || !TagTree.StartsWith(path, node))
+                if (path.Length == 0 || !TagTree.StartsWith(path, node) || ChannelPlan.IsMovedOut(path, root, promotedRoots))
                 {
                     continue;
                 }
@@ -147,6 +188,14 @@ public class TagBrowserChannel : IChannel, IHasCacheKey
                 media.Add(item);
             }
         }
+
+        timer.Stop();
+        _logger.Log(
+            timer.ElapsedMilliseconds > 500 ? LogLevel.Information : LogLevel.Debug,
+            "Tag Browser: scanned {Videos} videos for [{Node}] in {Ms} ms",
+            scanned,
+            string.Join(" > ", node),
+            timer.ElapsedMilliseconds);
 
         var pinned = Ordering.ParsePinned(config?.PinnedFolders, separator);
         var sortedFolders = Ordering.SortFolders(
@@ -189,7 +238,7 @@ public class TagBrowserChannel : IChannel, IHasCacheKey
     }
 
     /// <inheritdoc />
-    public Task<DynamicImageResponse> GetChannelImage(ImageType type, CancellationToken cancellationToken)
+    public virtual Task<DynamicImageResponse> GetChannelImage(ImageType type, CancellationToken cancellationToken)
     {
         var config = Plugin.Instance?.Configuration;
         var (customPath, resource) = type switch
@@ -254,7 +303,15 @@ public class TagBrowserChannel : IChannel, IHasCacheKey
         await _libraryManager.UpdateItemAsync(existing, existing.GetParent(), ItemUpdateType.ImageUpdate, cancellationToken).ConfigureAwait(false);
     }
 
-    private static string? FolderImagePath(List<BaseItem> videos, string folderId, string videoOrder, string folderImage)
+    /// <summary>
+    /// The image for a folder (or a promoted channel): a thumbnail of one of its videos, or the logo, per the settings.
+    /// </summary>
+    /// <param name="videos">The videos under the folder.</param>
+    /// <param name="folderId">The folder id (keeps a random pick stable).</param>
+    /// <param name="videoOrder">Which video provides the thumbnail.</param>
+    /// <param name="folderImage">FirstVideo, Logo or None.</param>
+    /// <returns>The image path, or null for none.</returns>
+    protected static string? FolderImagePath(IReadOnlyList<BaseItem> videos, string folderId, string videoOrder, string folderImage)
     {
         if (string.Equals(folderImage, "None", StringComparison.Ordinal))
         {
@@ -268,7 +325,7 @@ public class TagBrowserChannel : IChannel, IHasCacheKey
                 : Ordering.SortVideos(videos, videoOrder);
             var thumb = candidates
                 .Select(v => v.GetImagePath(ImageType.Primary))
-                .FirstOrDefault(path => !string.IsNullOrEmpty(path));
+                .FirstOrDefault(path => !string.IsNullOrEmpty(path) && File.Exists(path));
             if (thumb is not null)
             {
                 return thumb;
@@ -276,6 +333,55 @@ public class TagBrowserChannel : IChannel, IHasCacheKey
         }
 
         return Plugin.Instance?.GetFolderLogoPath();
+    }
+
+    /// <summary>
+    /// Jellyfin stores a channel's images once, when it first creates the channel, and never asks again. Set this
+    /// channel's tile images to <paramref name="path"/> if they differ, so they follow the videos' thumbnails.
+    /// </summary>
+    /// <param name="path">The image path.</param>
+    /// <param name="cancellationToken">The cancellation token.</param>
+    /// <returns>A task that completes when the images are up to date.</returns>
+    protected async Task SyncChannelTileAsync(string path, CancellationToken cancellationToken)
+    {
+        var channels = _libraryManager.GetItemList(new InternalItemsQuery
+        {
+            IncludeItemTypes = new[] { BaseItemKind.Channel },
+            Name = Name,
+        });
+
+        foreach (var channel in channels.Where(c => string.Equals(c.Name, Name, StringComparison.Ordinal)))
+        {
+            var changed = false;
+            foreach (var type in new[] { ImageType.Primary, ImageType.Thumb })
+            {
+                if (!string.Equals(channel.GetImagePath(type, 0), path, StringComparison.Ordinal))
+                {
+                    channel.SetImagePath(type, path);
+                    changed = true;
+                }
+            }
+
+            if (changed)
+            {
+                await _libraryManager.UpdateItemAsync(channel, channel.GetParent(), ItemUpdateType.ImageUpdate, cancellationToken).ConfigureAwait(false);
+            }
+        }
+    }
+
+    /// <summary>
+    /// The videos listed under a tree path in this channel (after promoted branches have moved out).
+    /// </summary>
+    /// <param name="root">The tree path.</param>
+    /// <returns>The videos.</returns>
+    protected IReadOnlyList<BaseItem> VideosUnder(IReadOnlyList<string> root)
+    {
+        var config = Plugin.Instance?.Configuration ?? new Configuration.PluginConfiguration();
+        var branches = new Branches(config, GetLibraryLocations(), PeopleOf, ParentsOf, StreamsOf, StreamMemo);
+        var promotedRoots = ChannelPlan.Promoted(config, Separator, MainChannelName).Select(p => p.Root).ToList();
+        return GetSourceVideos(Guid.Empty)
+            .Where(i => branches.PathsFor(i).Any(p => p.Length > 0 && TagTree.StartsWith(p, root) && !ChannelPlan.IsMovedOut(p, root, promotedRoots)))
+            .ToList();
     }
 
     private IEnumerable<BaseItem> GetSourceVideos(Guid userId)
@@ -315,7 +421,29 @@ public class TagBrowserChannel : IChannel, IHasCacheKey
             .ToList();
     }
 
-    private IEnumerable<string> PeopleOf(BaseItem item) => _libraryManager.GetPeople(item).Select(p => p.Name);
+    private static string[] StreamMemo(BaseItem item, string key, Func<string[]> compute)
+    {
+        if (StreamCache.TryGetValue((item.Id, key), out var hit) && hit.Modified == item.DateModified)
+        {
+            return hit.Values;
+        }
+
+        if (StreamCache.Count > 250_000)
+        {
+            StreamCache.Clear();
+        }
+
+        var values = compute();
+        StreamCache[(item.Id, key)] = (item.DateModified, values);
+        return values;
+    }
+
+    private static IReadOnlyList<MediaStream> StreamsOf(BaseItem item) => item.GetMediaStreams();
+
+    private static IEnumerable<BaseItem> ParentsOf(BaseItem item)
+        => item is MediaBrowser.Controller.Entities.TV.Episode { Series: { } series } ? new BaseItem[] { series } : Array.Empty<BaseItem>();
+
+    private IEnumerable<(string Name, string Kind)> PeopleOf(BaseItem item) => _libraryManager.GetPeople(item).Select(p => (p.Name, p.Type.ToString()));
 
     private static ChannelItemInfo ToChannelItem(BaseItem item, string folderKey)
     {

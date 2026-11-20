@@ -9,134 +9,167 @@
         <div data-role="content">
             <div class="content-primary">
                 <form id="TagBrowserConfigForm">
-                    <div class="verticalSection">
-                        <h2 class="sectionTitle">Tag Browser</h2>
-                        <p>Browse your library by tag. Changes are applied by running <em>Refresh Channels</em> automatically after saving.</p>
+                    <style>
+                        .tbSection { margin: 2em 0 0; }
+                        .tbSection > h3 { margin: 0 0 .25em; padding-bottom: .3em; border-bottom: 1px solid rgba(128,128,128,.4); }
+                        .tbHint { opacity: .7; margin: .4em 0 .8em; }
+                        .tbCard { border: 1px solid rgba(128,128,128,.4); border-radius: .4em; padding: .2em 1em .6em; margin: .8em 0; }
+                        .tbCard > .tbCardTitle { font-weight: 600; margin: .6em 0 .2em; }
+                        .tbCard .inputContainer, .tbCard .selectContainer, .tbCard .checkboxContainer { margin-bottom: .6em; }
+                        .tbTable { width: 100%; border-collapse: collapse; margin: .6em 0; }
+                        .tbTable th, .tbTable td { border: 1px solid rgba(128,128,128,.4); padding: .4em .6em; text-align: left; }
+                        .tbTable th { background: rgba(128,128,128,.18); font-weight: 600; }
+                        .tbTable td.tbEmpty { text-align: center; opacity: .6; font-style: italic; }
+                        .tbTable input[type=text] { width: 100%; box-sizing: border-box; padding: .4em .5em; background: rgba(128,128,128,.12); color: inherit; border: 1px solid rgba(128,128,128,.4); border-radius: .25em; font: inherit; }
+                        .tbTable td.tbAct { width: 3em; text-align: center; }
+                    </style>
+
+                    <div class="tbSection">
+                        <h3>General</h3>
+                        <div class="tbHint">Changes are applied by running <em>Refresh Channels</em> automatically after saving.</div>
+                        <div class="inputContainer">
+                            <input is="emby-input" type="text" id="ChannelName" label="Channel name" />
+                            <div class="fieldDescription">Shown in Jellyfin. Changing it creates a new channel; set it once.</div>
+                        </div>
+                        <div class="inputContainer">
+                            <input is="emby-input" type="text" id="Separator" label="Tag separator" />
+                            <div class="fieldDescription">Splits a tag into nested folders: <code>move: cambre</code> → move › cambre. Matched exactly. Leave empty to show tags flat.</div>
+                        </div>
                     </div>
 
-                    <div class="inputContainer">
-                        <input is="emby-input" type="text" id="ChannelName" label="Channel name" />
-                        <div class="fieldDescription">Shown in Jellyfin. Changing it creates a new channel; set it once.</div>
-                    </div>
-
-                    <div class="inputContainer">
-                        <input is="emby-input" type="text" id="Separator" label="Tag separator" />
-                        <div class="fieldDescription">Splits a tag into nested folders: <code>move: cambre</code> → move › cambre. Matched exactly. Leave empty to show tags flat.</div>
-                    </div>
-
-
-                    <div class="verticalSection">
-                        <h3 class="sectionTitle">Libraries</h3>
-                        <div class="fieldDescription">Only videos from the ticked libraries appear. None ticked = all libraries.</div>
+                    <div class="tbSection">
+                        <h3>Libraries</h3>
+                        <div class="tbHint">Only videos from the ticked libraries appear. None ticked = all libraries.</div>
                         <div id="LibraryList" class="checkboxList paperList" style="padding:.5em 1em;"></div>
                     </div>
 
-                    <div class="verticalSection">
-                        <h3 class="sectionTitle">Branches</h3>
-                        <div class="fieldDescription">Top-level folders of the channel.</div>
-                    </div>
-                    <div class="checkboxContainer checkboxContainer-withDescription">
-                        <label><input is="emby-checkbox" type="checkbox" id="TagsAtTopLevel" /><span>Show tags at the top level</span></label>
-                        <div class="fieldDescription checkboxFieldDescription">Tags appear alongside the other branches. Off: tags are grouped under the Tags branch name below.</div>
+                    <div class="tbSection">
+                        <h3>Branches</h3>
+                        <div class="tbHint">Top-level folders of the channel. Tick to show a branch and optionally rename it.</div>
+
+                        <div class="tbCard">
+                            <div class="checkboxContainer checkboxContainer-withDescription">
+                                <label><input is="emby-checkbox" type="checkbox" id="BranchTags" /><span>Tags</span></label>
+                                <div class="fieldDescription checkboxFieldDescription">From &lt;tag&gt;; tagged videos only.</div>
+                            </div>
+                            <div class="checkboxContainer checkboxContainer-withDescription">
+                                <label><input is="emby-checkbox" type="checkbox" id="TagsAtTopLevel" /><span>Show tags at the top level</span></label>
+                                <div class="fieldDescription checkboxFieldDescription">Tags appear alongside the other branches. Off: tags are grouped under the name below.</div>
+                            </div>
+                            <div class="inputContainer">
+                                <input is="emby-input" type="text" id="BranchTagsName" label="Tags branch name" />
+                            </div>
+                        </div>
+
+                        <div class="tbCard">
+                            <div class="checkboxContainer checkboxContainer-withDescription">
+                                <label><input is="emby-checkbox" type="checkbox" id="BranchDate" /><span>Date</span></label>
+                                <div class="fieldDescription checkboxFieldDescription">From the video's date (&lt;premiered&gt;, else the file's date), in the server's time zone. All videos.</div>
+                            </div>
+                            <div class="inputContainer">
+                                <input is="emby-input" type="text" id="BranchDateName" label="Date branch name" />
+                            </div>
+                            <div class="selectContainer">
+                                <select is="emby-select" id="DateDepth" label="Depth">
+                                    <option value="Year">Year</option>
+                                    <option value="Month">Year › Month</option>
+                                    <option value="Day">Year › Month › Day</option>
+                                </select>
+                            </div>
+                            <div class="checkboxContainer checkboxContainer-withDescription">
+                                <label><input is="emby-checkbox" type="checkbox" id="DateFromFileName" /><span>Use a date in the file name when the video has no date</span></label>
+                                <div class="fieldDescription checkboxFieldDescription">E.g. <code>20220213_180246</code>, <code>VID-20250924-WA0005</code>.</div>
+                            </div>
+                            <div class="checkboxContainer checkboxContainer-withDescription">
+                                <label><input is="emby-checkbox" type="checkbox" id="PreferFileNameDate" /><span>Prefer the file-name date over the time recorded in the file</span></label>
+                                <div class="fieldDescription checkboxFieldDescription">Recorded times are UTC and shown in the server's time zone; file names usually hold the camera's local date. A <code>&lt;premiered&gt;</code> date always wins and must be a date only (<code>YYYY-MM-DD</code>); a time makes Jellyfin ignore it.</div>
+                            </div>
+                            <div class="inputContainer">
+                                <input is="emby-input" type="text" id="UndatedName" label="Folder for videos without a date" />
+                                <div class="fieldDescription">Inside the Date branch. Leave empty to hide them.</div>
+                            </div>
+                        </div>
+
+                        <div class="tbCard">
+                            <div class="checkboxContainer checkboxContainer-withDescription">
+                                <label><input is="emby-checkbox" type="checkbox" id="BranchFolders" /><span>Folders</span></label>
+                                <div class="fieldDescription checkboxFieldDescription">The library's folder structure. All videos.</div>
+                            </div>
+                            <div class="inputContainer">
+                                <input is="emby-input" type="text" id="BranchFoldersName" label="Folders branch name" />
+                            </div>
+                        </div>
                     </div>
 
-                    <div class="checkboxContainer">
-                        <label><input is="emby-checkbox" type="checkbox" id="BranchTags" /><span>Tags</span></label>
-                    </div>
-                    <div class="inputContainer">
-                        <input is="emby-input" type="text" id="BranchTagsName" label="Tags branch name" />
-                        <div class="fieldDescription">From &lt;tag&gt;; tagged videos only.</div>
-                    </div>
-                    <div class="checkboxContainer">
-                        <label><input is="emby-checkbox" type="checkbox" id="BranchDate" /><span>Date</span></label>
-                    </div>
-                    <div class="inputContainer">
-                        <input is="emby-input" type="text" id="BranchDateName" label="Date branch name" />
-                        <div class="fieldDescription">From the video's date (&lt;premiered&gt;, else the file's date), in the server's time zone. All videos.</div>
-                    </div>
-                    <div class="checkboxContainer">
-                        <label><input is="emby-checkbox" type="checkbox" id="BranchFolders" /><span>Folders</span></label>
-                    </div>
-                    <div class="inputContainer">
-                        <input is="emby-input" type="text" id="BranchFoldersName" label="Folders branch name" />
-                        <div class="fieldDescription">The library's folder structure. All videos.</div>
-                    </div>
-                    <div class="checkboxContainer">
-                        <label><input is="emby-checkbox" type="checkbox" id="BranchGenres" /><span>Genres</span></label>
-                    </div>
-                    <div class="inputContainer">
-                        <input is="emby-input" type="text" id="BranchGenresName" label="Genres branch name" />
-                        <div class="fieldDescription">From &lt;genre&gt;. All videos.</div>
-                    </div>
-                    <div class="checkboxContainer">
-                        <label><input is="emby-checkbox" type="checkbox" id="BranchStudios" /><span>Studios</span></label>
-                    </div>
-                    <div class="inputContainer">
-                        <input is="emby-input" type="text" id="BranchStudiosName" label="Studios branch name" />
-                        <div class="fieldDescription">From &lt;studio&gt;. All videos.</div>
-                    </div>
-                    <div class="checkboxContainer">
-                        <label><input is="emby-checkbox" type="checkbox" id="BranchPeople" /><span>People</span></label>
-                    </div>
-                    <div class="inputContainer">
-                        <input is="emby-input" type="text" id="BranchPeopleName" label="People branch name" />
-                        <div class="fieldDescription">From &lt;actor&gt; names. All videos.</div>
-                    </div>
-                    <div class="checkboxContainer checkboxContainer-withDescription">
-                        <label><input is="emby-checkbox" type="checkbox" id="DateFromFileName" /><span>Use a date in the file name when the video has no date</span></label>
-                        <div class="fieldDescription checkboxFieldDescription">E.g. <code>20220213_180246</code>, <code>VID-20250924-WA0005</code>.</div>
-                    </div>
-                    <div class="checkboxContainer checkboxContainer-withDescription">
-                        <label><input is="emby-checkbox" type="checkbox" id="PreferFileNameDate" /><span>Prefer the file-name date over the time recorded in the file</span></label>
-                        <div class="fieldDescription checkboxFieldDescription">Recorded times are UTC and shown in the server's time zone; file names usually hold the camera's local date. A <code>&lt;premiered&gt;</code> date always wins and must be a date only (<code>YYYY-MM-DD</code>); a time makes Jellyfin ignore it.</div>
-                    </div>
-                    <div class="inputContainer">
-                        <input is="emby-input" type="text" id="UndatedName" label="Folder for videos without a date" />
-                        <div class="fieldDescription">Inside the Date branch. Leave empty to hide them.</div>
-                    </div>
-                    <div class="selectContainer">
-                        <select is="emby-select" id="DateDepth" label="Date branch depth">
-                            <option value="Year">Year</option>
-                            <option value="Month">Year › Month</option>
-                            <option value="Day">Year › Month › Day</option>
-                        </select>
+                    <div class="tbSection">
+                        <h3>Property branches</h3>
+                        <div class="tbHint">Each row adds a top-level folder listing every value of that property. Use Jellyfin's own names (not case-sensitive), e.g. <code>studios</code>, <code>genres</code>, <code>productionYear</code>, <code>person.director</code>, <code>video.codec</code>, <code>audio.language</code>. Pick a suggestion or type any item property; <code>tag</code> is covered by Tags. Names that match nothing show nothing.</div>
+                        <datalist id="PropertyNames"></datalist>
+                        <table id="PropertyTable" class="tbTable">
+                            <thead><tr><th>Property</th><th>Shown as (optional)</th><th class="tbAct"></th></tr></thead>
+                            <tbody></tbody>
+                        </table>
+                        <div id="PropertyEmpty" class="tbHint" style="text-align:center;font-style:italic;">No property branches yet.</div>
+                        <button is="emby-button" type="button" id="AddProperty" class="raised emby-button"><span>Add property</span></button>
+                        <div class="inputContainer" style="margin-top:1em;">
+                            <input is="emby-input" type="text" id="UnknownName" label="Folder for videos without a value" />
+                            <div class="fieldDescription">Inside each property branch, for videos that have no value for it. Leave empty to hide them.</div>
+                        </div>
                     </div>
 
-                    <div class="selectContainer">
-                        <select is="emby-select" id="FolderImage" label="Folder image">
-                            <option value="FirstVideo">Thumbnail of a video in the folder (logo if none)</option>
-                            <option value="Logo">Logo</option>
-                            <option value="None">None</option>
-                        </select>
+                    <div class="tbSection">
+                        <h3>Channels</h3>
+                        <div class="tbHint">Jellyfin shows each channel as its own entry. By default there is one, the Tag Browser. You can turn it off, and promote any branch to a channel of its own.</div>
+                        <div class="checkboxContainer checkboxContainer-withDescription">
+                            <label><input is="emby-checkbox" type="checkbox" id="MainChannelEnabled" /><span>Show the main channel</span></label>
+                            <div class="fieldDescription checkboxFieldDescription">Off hides the main channel. Channels promoted below stay.</div>
+                        </div>
+                        <h4 style="margin:1em 0 .2em;">Separate channels</h4>
+                        <div class="tbHint">Each row turns one branch into its own channel (up to 10). <b>Branch</b> is a branch or folder as shown in the tree, using the tag separator for levels: <code>dance</code> opens a channel showing what is under the <code>dance</code> tag (so <code>dance: zouk</code> appears as <code>zouk</code>), <code>dance: zouk</code> opens at that folder, and a property branch uses its shown name, e.g. <code>Studios</code>. A promoted branch is <b>moved</b>, not copied: it leaves the main channel, so each video is listed in one place. Renaming a channel creates a new one, and the watched state of its videos starts again. Changes apply when you save.</div>
+                        <table id="ChannelTable" class="tbTable">
+                            <thead><tr><th>Branch</th><th>Channel name (optional)</th><th class="tbAct"></th></tr></thead>
+                            <tbody></tbody>
+                        </table>
+                        <div id="ChannelEmpty" class="tbHint" style="text-align:center;font-style:italic;">No separate channels yet.</div>
+                        <button is="emby-button" type="button" id="AddChannel" class="raised emby-button"><span>Add channel</span></button>
                     </div>
 
-                    <div class="selectContainer">
-                        <select is="emby-select" id="VideoOrder" label="Folder thumbnail taken from">
-                            <option value="Random">Random video (fixed per folder)</option>
-                            <option value="Title">First video by title</option>
-                            <option value="PremiereDesc">Newest video (by date)</option>
-                            <option value="PremiereAsc">Oldest video (by date)</option>
-                            <option value="DateAddedDesc">Most recently added video</option>
-                        </select>
-                        <div class="fieldDescription">Jellyfin lists channel folders and videos alphabetically.</div>
+                    <div class="tbSection">
+                        <h3>Appearance</h3>
+                        <div class="selectContainer">
+                            <select is="emby-select" id="FolderImage" label="Folder image">
+                                <option value="FirstVideo">Thumbnail of a video in the folder (logo if none)</option>
+                                <option value="Logo">Logo</option>
+                                <option value="None">None</option>
+                            </select>
+                        </div>
+                        <div class="selectContainer">
+                            <select is="emby-select" id="VideoOrder" label="Folder thumbnail taken from">
+                                <option value="Random">Random video (fixed per folder)</option>
+                                <option value="Title">First video by title</option>
+                                <option value="PremiereDesc">Newest video (by date)</option>
+                                <option value="PremiereAsc">Oldest video (by date)</option>
+                                <option value="DateAddedDesc">Most recently added video</option>
+                            </select>
+                            <div class="fieldDescription">Jellyfin lists channel folders and videos alphabetically.</div>
+                        </div>
                     </div>
 
-                    <div class="verticalSection">
-                        <h3 class="sectionTitle">Images</h3>
-                        <div class="fieldDescription">Optional. Full path on the server to a PNG or JPEG. Leave empty for the built-in artwork.</div>
+                    <div class="tbSection">
+                        <h3>Images</h3>
+                        <div class="tbHint">Optional. Full path on the server to a PNG or JPEG. Leave empty for the built-in artwork.</div>
+                        <div class="inputContainer">
+                            <input is="emby-input" type="text" id="PrimaryImagePath" label="Tile image (square)" />
+                        </div>
+                        <div class="inputContainer">
+                            <input is="emby-input" type="text" id="ThumbImagePath" label="Wide tile image (16:9)" />
+                        </div>
+                        <div class="inputContainer">
+                            <input is="emby-input" type="text" id="BackdropImagePath" label="Background image (16:9)" />
+                        </div>
                     </div>
 
-                    <div class="inputContainer">
-                        <input is="emby-input" type="text" id="PrimaryImagePath" label="Tile image (square)" />
-                    </div>
-                    <div class="inputContainer">
-                        <input is="emby-input" type="text" id="ThumbImagePath" label="Wide tile image (16:9)" />
-                    </div>
-                    <div class="inputContainer">
-                        <input is="emby-input" type="text" id="BackdropImagePath" label="Background image (16:9)" />
-                    </div>
-
-                    <div>
+                    <div class="tbSection">
                         <button is="emby-button" type="submit" class="raised button-submit block emby-button">
                             <span>Save</span>
                         </button>
@@ -147,8 +180,8 @@
         <script type="text/javascript">
             (function () {
                 var pluginId = '209c23d2-2b52-4e78-a4d7-3107e770e326';
-                var fields = ['ChannelName', 'Separator', 'BranchTagsName', 'BranchDateName', 'DateDepth', 'UndatedName', 'BranchFoldersName', 'BranchGenresName', 'BranchStudiosName', 'BranchPeopleName', 'FolderImage', 'VideoOrder', 'PrimaryImagePath', 'ThumbImagePath', 'BackdropImagePath'];
-                var checks = ['TagsAtTopLevel', 'BranchTags', 'BranchDate', 'BranchFolders', 'BranchGenres', 'BranchStudios', 'BranchPeople', 'DateFromFileName', 'PreferFileNameDate'];
+                var fields = ['ChannelName', 'Separator', 'BranchTagsName', 'BranchDateName', 'DateDepth', 'UndatedName', 'UnknownName', 'BranchFoldersName', 'FolderImage', 'VideoOrder', 'PrimaryImagePath', 'ThumbImagePath', 'BackdropImagePath'];
+                var checks = ['TagsAtTopLevel', 'MainChannelEnabled', 'BranchTags', 'BranchDate', 'BranchFolders', 'DateFromFileName', 'PreferFileNameDate'];
                 var page = document.querySelector('#TagBrowserConfigPage');
 
                 function renderLibraries(config) {
@@ -161,11 +194,58 @@
                     });
                 }
 
+                function loadSuggestions() {
+                    ApiClient.ajax({ type: 'GET', url: ApiClient.getUrl('TagBrowser/Properties'), dataType: 'json' }).then(function (names) {
+                        if (names && names.length) {
+                            page.querySelector('#PropertyNames').innerHTML = names.map(function (n) { return '<option value="' + n + '">'; }).join('');
+                        }
+                    }, function () { /* no suggestions; names can still be typed */ });
+                }
+
+                function syncEmpty() {
+                    page.querySelector('#PropertyEmpty').style.display = page.querySelector('#PropertyTable tbody').children.length ? 'none' : '';
+                }
+
+                function syncChannelEmpty() {
+                    var rows = page.querySelector('#ChannelTable tbody').children.length;
+                    page.querySelector('#ChannelEmpty').style.display = rows ? 'none' : '';
+                    page.querySelector('#AddChannel').disabled = rows >= 10;
+                }
+
+                function addChannelRow(path, name) {
+                    var tr = document.createElement('tr');
+                    tr.innerHTML = '<td><input type="text" class="chPath" placeholder="e.g. dance" /></td><td><input type="text" class="chName" placeholder="e.g. Dance" /></td><td class="tbAct"><button type="button" class="chRemove" title="Remove">&times;</button></td>';
+                    tr.querySelector('.chPath').value = path || '';
+                    tr.querySelector('.chName').value = name || '';
+                    tr.querySelector('.chRemove').addEventListener('click', function () { tr.remove(); syncChannelEmpty(); });
+                    page.querySelector('#ChannelTable tbody').appendChild(tr);
+                    syncChannelEmpty();
+                }
+                page.querySelector('#AddChannel').addEventListener('click', function () { addChannelRow('', ''); });
+
+                function addRow(prop, name) {
+                    var tr = document.createElement('tr');
+                    tr.innerHTML = '<td><input type="text" class="propName" list="PropertyNames" placeholder="e.g. studio" /></td><td><input type="text" class="propShown" placeholder="e.g. Studios" /></td><td class="tbAct"><button type="button" class="propRemove" title="Remove">&times;</button></td>';
+                    tr.querySelector('.propName').value = prop || '';
+                    tr.querySelector('.propShown').value = name || '';
+                    tr.querySelector('.propRemove').addEventListener('click', function () { tr.remove(); syncEmpty(); });
+                    page.querySelector('#PropertyTable tbody').appendChild(tr);
+                    syncEmpty();
+                }
+                page.querySelector('#AddProperty').addEventListener('click', function () { addRow('', ''); });
+
                 page.addEventListener('pageshow', function () {
                     Dashboard.showLoadingMsg();
+                    loadSuggestions();
                     ApiClient.getPluginConfiguration(pluginId).then(function (config) {
                         fields.forEach(function (f) { var el = page.querySelector('#' + f); el.value = config[f] || (el.tagName === 'SELECT' ? el.options[0].value : ''); });
                         checks.forEach(function (c) { page.querySelector('#' + c).checked = !!config[c]; });
+                        page.querySelector('#ChannelTable tbody').innerHTML = '';
+                        (config.PromotedChannels || []).forEach(function (r) { addChannelRow(r.Path, r.Name); });
+                        syncChannelEmpty();
+                        page.querySelector('#PropertyTable tbody').innerHTML = '';
+                        syncEmpty();
+                        (config.PropertyBranches || []).forEach(function (r) { addRow(r.Property, r.DisplayName); });
                         renderLibraries(config).then(function () { Dashboard.hideLoadingMsg(); });
                     });
                 });
@@ -176,6 +256,12 @@
                     ApiClient.getPluginConfiguration(pluginId).then(function (config) {
                         fields.forEach(function (f) { config[f] = page.querySelector('#' + f).value; });
                         checks.forEach(function (c) { config[c] = page.querySelector('#' + c).checked; });
+                        config.PropertyBranches = Array.prototype.map.call(page.querySelectorAll('#PropertyTable tbody tr'), function (tr) {
+                            return { Property: tr.querySelector('.propName').value.trim(), DisplayName: tr.querySelector('.propShown').value.trim() };
+                        }).filter(function (r) { return r.Property; });
+                        config.PromotedChannels = Array.prototype.map.call(page.querySelectorAll('#ChannelTable tbody tr'), function (tr) {
+                            return { Path: tr.querySelector('.chPath').value.trim(), Name: tr.querySelector('.chName').value.trim() };
+                        }).filter(function (r) { return r.Path; }).slice(0, 10);
                         config.Libraries = Array.prototype.map.call(page.querySelectorAll('.libCheck:checked'), function (x) { return x.value; }).join(',');
                         if (!config.ChannelName.trim()) { config.ChannelName = 'Tag Browser'; }
                         ApiClient.updatePluginConfiguration(pluginId, config).then(function (result) {

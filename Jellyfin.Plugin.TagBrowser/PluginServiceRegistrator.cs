@@ -16,5 +16,13 @@ public class PluginServiceRegistrator : IPluginServiceRegistrator
     public void RegisterServices(IServiceCollection serviceCollection, IServerApplicationHost applicationHost)
     {
         serviceCollection.AddSingleton<IChannel, TagBrowserChannel>();
+
+        // Jellyfin fixes its channel list at startup, so register spare channels now; each stays hidden until the
+        // settings assign it a branch to show.
+        for (var i = 1; i <= ChannelPlan.MaxPromoted; i++)
+        {
+            var slot = i;
+            serviceCollection.AddSingleton<IChannel>(sp => ActivatorUtilities.CreateInstance<PromotedTagChannel>(sp, slot));
+        }
     }
 }
