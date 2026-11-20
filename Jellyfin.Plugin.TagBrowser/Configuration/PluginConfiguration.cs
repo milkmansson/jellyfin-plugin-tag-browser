@@ -94,23 +94,12 @@ public class PluginConfiguration : BasePluginConfiguration
     /// <summary>Gets or sets the Folders branch name.</summary>
     public string BranchFoldersName { get; set; } = "Folders";
 
-    /// <summary>Gets or sets a value indicating whether the Genres branch is shown.</summary>
-    public bool BranchGenres { get; set; }
-
-    /// <summary>Gets or sets the Genres branch name.</summary>
-    public string BranchGenresName { get; set; } = "Genres";
-
-    /// <summary>Gets or sets a value indicating whether the Studios branch is shown.</summary>
-    public bool BranchStudios { get; set; }
-
-    /// <summary>Gets or sets the Studios branch name.</summary>
-    public string BranchStudiosName { get; set; } = "Studios";
-
-    /// <summary>Gets or sets a value indicating whether the People branch is shown.</summary>
-    public bool BranchPeople { get; set; }
-
-    /// <summary>Gets or sets the People branch name.</summary>
-    public string BranchPeopleName { get; set; } = "People";
+    /// <summary>
+    /// Gets or sets the metadata branches. Each row becomes a top-level folder listing every distinct value
+    /// of that item property (e.g. studio, actor, year). Empty by default.
+    /// </summary>
+    [System.Diagnostics.CodeAnalysis.SuppressMessage("Usage", "CA1819:Properties should not return arrays", Justification = "Plugin settings are serialised as plain arrays.")]
+    public PropertyBranch[] PropertyBranches { get; set; } = System.Array.Empty<PropertyBranch>();
 
     /// <summary>Gets or sets a value indicating whether a date in the file name is used when the video has no date.</summary>
     public bool DateFromFileName { get; set; } = true;

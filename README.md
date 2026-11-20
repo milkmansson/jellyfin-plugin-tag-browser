@@ -30,9 +30,22 @@ Other branches can be enabled alongside Tags:
 |---|---|---|
 | Date | `<premiered>`, else the date recorded in the file, else a date in the file name | `Date` → `2022` → `2022-03 March` → `2022-03-20` |
 | Folders | Library folder structure | `Folders` → `Zouk` |
-| Genres | `<genre>` | `Genres` → `Brazilian Zouk` |
-| Studios | `<studio>` | `Studios` → `…` |
-| People | `<actor>` names | `People` → `…` |
+
+### Property branches
+
+Any metadata property can become its own top-level folder, listing every distinct value beneath it. In the settings, add a row to the **Property branches** table: the property name (not case-sensitive) and, optionally, the name shown in the channel. The table is empty by default.
+
+| Property | Built from | Example path |
+|---|---|---|
+| `genre` | `<genre>` | `Genre` → `Brazilian Zouk` |
+| `studio` | `<studio>` | `Studio` → `Inflow` |
+| `actor`, `director`, `writer`, … | `<actor>`, `<director>`, … (any Jellyfin person role) | `Actor` → `Anna` |
+| `people` | every person, any role | `People` → `Anna` |
+| `year` | `<year>` | `Year` → `2022` |
+| `rating` | `<mpaa>` | `Rating` → `PG` |
+| `country` | `<country>` | `Country` → `Brazil` |
+
+Only what Jellyfin imports from the NFO is available; elements Jellyfin ignores cannot be grouped by. Tags have their own branch above, so `tag` is not a property. Unknown names show nothing. A video with several values appears under each.
 
 Tags only lists tagged videos; the other branches list all videos of the included libraries.
 
@@ -60,6 +73,7 @@ Tags only lists tagged videos; the other branches list all videos of the include
 | Libraries | All | Only videos from ticked libraries appear. |
 | Tags at the top level | On | Tags appear alongside the other branches. Off: grouped under the Tags branch. |
 | Branches | Tags, Date | Tick to enable; each has a name. |
+| Property branches | none | Table of properties to group by (see above). |
 | Date branch depth | Year › Month › Day | Or: year, year › month. |
 | Date from file name | On | Used when the video has no date (`20220213_180246`, `VID-20250924-WA0005`). |
 | Prefer file-name date | Off | Use the file-name date instead of the recorded time (which is UTC). |

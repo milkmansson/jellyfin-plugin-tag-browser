@@ -13,7 +13,7 @@ public class BranchesTests
 {
     private static readonly (string Name, string Location)[] OneLibrary = { ("Dance", "/media/Dance") };
 
-    private static Branches Make(PluginConfiguration config, (string Name, string Location)[]? libraries = null, params string[] people)
+    private static Branches Make(PluginConfiguration config, (string Name, string Location)[]? libraries = null, params (string Name, string Kind)[] people)
         => new(config, libraries ?? OneLibrary, _ => people);
 
     private static Video Item(string path, string[]? tags = null, DateTime? premiere = null, int? year = null)
@@ -61,7 +61,7 @@ public class BranchesTests
     [Fact]
     public void SeveralBranches_PrefixWithBranchNames()
     {
-        var config = new PluginConfiguration { TagsAtTopLevel = false, BranchGenres = true, BranchStudios = true };
+        var config = new PluginConfiguration { TagsAtTopLevel = false, PropertyBranches = new[] { new PropertyBranch { Property = "Genre", DisplayName = "Genres" }, new PropertyBranch { Property = "studio", DisplayName = "Studios" } } };
         var item = Item("/media/Dance/a.mp4", new[] { "move: cambre" }, new DateTime(2022, 3, 20, 0, 0, 0, DateTimeKind.Utc));
         item.Genres = new[] { "Zouk" };
         item.Studios = new[] { "Inflow" };
@@ -83,15 +83,60 @@ public class BranchesTests
         Assert.Equal(new[] { "Etiketter", "Datum" }, firsts);
     }
 
+    private static PluginConfiguration Props(params string[] properties)
+        => new() { TagsAtTopLevel = false, BranchTags = false, BranchDate = false, PropertyBranches = properties.Select(p => new PropertyBranch { Property = p }).ToArray() };
+
+    private static List<string> PathStrings(Branches b, BaseItem item) => b.PathsFor(item).Select(p => string.Join("/", p)).ToList();
+
     [Fact]
-    public void People_AreDistinctAndOnlyWhenEnabled()
+    public void NoPropertyBranches_ByDefault()
     {
         var item = Item("/media/Dance/a.mp4");
-        Assert.DoesNotContain(Make(new PluginConfiguration(), null, "Anna").PathsFor(item), p => p[0] == "People");
+        item.Genres = new[] { "Zouk" };
+        Assert.DoesNotContain(PathStrings(Make(new PluginConfiguration()), item), p => p.StartsWith("Genre", StringComparison.Ordinal));
+    }
 
-        var paths = Make(new PluginConfiguration { BranchPeople = true }, null, "Anna", "anna", "Bruno").PathsFor(item)
-            .Where(p => p[0] == "People").Select(p => p[1]).ToList();
-        Assert.Equal(new[] { "Anna", "Bruno" }, paths);
+    [Fact]
+    public void Property_IsCaseInsensitive_AndDefaultsDisplayNameToCapitalisedName()
+    {
+        var item = Item("/media/Dance/a.mp4");
+        item.Studios = new[] { "Inflow", "inflow", " Other " };
+        Assert.Equal(new[] { "Studio/Inflow", "Studio/Other" }, PathStrings(Make(Props("studio")), item));
+        Assert.Equal(new[] { "STUDIOS/Inflow", "STUDIOS/Other" }, PathStrings(Make(Props("STUDIOS")), item));
+    }
+
+    [Fact]
+    public void DisplayName_OverridesPropertyName()
+    {
+        var config = new PluginConfiguration { BranchTags = false, BranchDate = false, PropertyBranches = new[] { new PropertyBranch { Property = "studio", DisplayName = "Labels" } } };
+        var item = Item("/media/Dance/a.mp4");
+        item.Studios = new[] { "Inflow" };
+        Assert.Equal(new[] { "Labels/Inflow" }, PathStrings(Make(config), item));
+    }
+
+    [Fact]
+    public void Year_Rating_Country()
+    {
+        var item = Item("/media/Dance/a.mp4", year: 2021);
+        item.OfficialRating = "PG";
+        item.ProductionLocations = new[] { "Brazil" };
+        Assert.Equal(new[] { "Year/2021", "Rating/PG", "Country/Brazil" }, PathStrings(Make(Props("year", "rating", "country")), item));
+    }
+
+    [Fact]
+    public void PersonRoles_FilterByKind_AndPeopleIsEveryone()
+    {
+        var item = Item("/media/Dance/a.mp4");
+        var b = Make(Props("actor", "director", "people"), null, ("Anna", "Actor"), ("anna", "Actor"), ("Bruno", "Director"));
+        Assert.Equal(new[] { "Actor/Anna", "Director/Bruno", "People/Anna", "People/Bruno" }, PathStrings(b, item));
+    }
+
+    [Fact]
+    public void UnknownProperty_AndDuplicateRows_AreIgnored()
+    {
+        var item = Item("/media/Dance/a.mp4");
+        item.Genres = new[] { "Zouk" };
+        Assert.Equal(new[] { "Genre/Zouk" }, PathStrings(Make(Props("genre", "GENRE", "nonsense", "")), item));
     }
 
     [Fact]

@@ -17,17 +17,19 @@ public sealed class Branches
     private static readonly System.Text.RegularExpressions.Regex FileNameDate =
         new(@"(?<!\d)(?<y>(19|20)\d{2})[-_.]?(?<m>\d{2})[-_.]?(?<d>\d{2})(?!\d)", System.Text.RegularExpressions.RegexOptions.Compiled);
 
+    private static readonly HashSet<string> PersonKinds = new(Enum.GetNames<Jellyfin.Data.Enums.PersonKind>().Select(n => n.ToLowerInvariant()), StringComparer.OrdinalIgnoreCase);
+
     private readonly PluginConfiguration _config;
     private readonly IReadOnlyList<(string Name, string Location)> _libraryLocations;
-    private readonly Func<BaseItem, IEnumerable<string>> _people;
+    private readonly Func<BaseItem, IEnumerable<(string Name, string Kind)>> _people;
 
     /// <summary>
     /// Initializes a new instance of the <see cref="Branches"/> class.
     /// </summary>
     /// <param name="config">The plugin configuration.</param>
     /// <param name="libraryLocations">Included libraries as (name, root folder) pairs.</param>
-    /// <param name="people">Returns the people of an item (only called when the People branch is enabled).</param>
-    public Branches(PluginConfiguration config, IReadOnlyList<(string Name, string Location)> libraryLocations, Func<BaseItem, IEnumerable<string>> people)
+    /// <param name="people">Returns the people of an item as (name, role) pairs (only called when a person property is configured).</param>
+    public Branches(PluginConfiguration config, IReadOnlyList<(string Name, string Location)> libraryLocations, Func<BaseItem, IEnumerable<(string Name, string Kind)>> people)
     {
         _config = config;
         _libraryLocations = libraryLocations;
@@ -63,29 +65,57 @@ public sealed class Branches
             yield return Prefix(Name(_config.BranchFoldersName, "Folders"), folder);
         }
 
-        if (_config.BranchGenres)
+        var seen = new HashSet<string>(StringComparer.OrdinalIgnoreCase);
+        foreach (var branch in _config.PropertyBranches ?? Array.Empty<PropertyBranch>())
         {
-            foreach (var genre in item.Genres.Where(g => !string.IsNullOrWhiteSpace(g)))
+            var property = branch?.Property?.Trim();
+            if (string.IsNullOrEmpty(property) || !seen.Add(property))
             {
-                yield return new[] { Name(_config.BranchGenresName, "Genres"), genre.Trim() };
+                continue;
             }
+
+            var values = PropertyValues(item, property);
+            if (values is null)
+            {
+                continue;
+            }
+
+            var name = Name(branch!.DisplayName, char.ToUpperInvariant(property[0]) + property.Substring(1));
+            foreach (var value in values.Where(v => !string.IsNullOrWhiteSpace(v)).Select(v => v.Trim()).Distinct(StringComparer.OrdinalIgnoreCase))
+            {
+                yield return new[] { name, value };
+            }
+        }
+    }
+
+    /// <summary>
+    /// Values of a named item property, or null when the name is unknown. Names are case-insensitive;
+    /// plurals work too. Any person role Jellyfin knows (actor, director, writer, ...) is a valid name.
+    /// </summary>
+    /// <param name="item">The item.</param>
+    /// <param name="property">The property name.</param>
+    /// <returns>The values (possibly none), or null for an unknown property.</returns>
+    public IEnumerable<string>? PropertyValues(BaseItem item, string property)
+    {
+        var key = property.Trim().ToLowerInvariant();
+        switch (key)
+        {
+            case "genre" or "genres":
+                return item.Genres;
+            case "studio" or "studios":
+                return item.Studios;
+            case "year" or "productionyear":
+                return item.ProductionYear is { } y ? new[] { y.ToString(CultureInfo.InvariantCulture) } : Array.Empty<string>();
+            case "rating" or "mpaa" or "officialrating" or "certification":
+                return item.OfficialRating is { } r ? new[] { r } : Array.Empty<string>();
+            case "country" or "countries" or "productionlocation" or "productionlocations":
+                return item.ProductionLocations ?? Array.Empty<string>();
+            case "people" or "person":
+                return _people(item).Select(p => p.Name);
         }
 
-        if (_config.BranchStudios)
-        {
-            foreach (var studio in item.Studios.Where(s => !string.IsNullOrWhiteSpace(s)))
-            {
-                yield return new[] { Name(_config.BranchStudiosName, "Studios"), studio.Trim() };
-            }
-        }
-
-        if (_config.BranchPeople)
-        {
-            foreach (var person in _people(item).Where(p => !string.IsNullOrWhiteSpace(p)).Distinct(StringComparer.OrdinalIgnoreCase))
-            {
-                yield return new[] { Name(_config.BranchPeopleName, "People"), person.Trim() };
-            }
-        }
+        var kind = key.EndsWith('s') ? key.Substring(0, key.Length - 1) : key;
+        return PersonKinds.Contains(kind) ? _people(item).Where(p => string.Equals(p.Kind, kind, StringComparison.OrdinalIgnoreCase)).Select(p => p.Name) : null;
     }
 
     /// <summary>

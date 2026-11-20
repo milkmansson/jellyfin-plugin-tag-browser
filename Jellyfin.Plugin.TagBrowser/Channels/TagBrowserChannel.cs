@@ -315,7 +315,7 @@ public class TagBrowserChannel : IChannel, IHasCacheKey
             .ToList();
     }
 
-    private IEnumerable<string> PeopleOf(BaseItem item) => _libraryManager.GetPeople(item).Select(p => p.Name);
+    private IEnumerable<(string Name, string Kind)> PeopleOf(BaseItem item) => _libraryManager.GetPeople(item).Select(p => (p.Name, p.Type.ToString()));
 
     private static ChannelItemInfo ToChannelItem(BaseItem item, string folderKey)
     {
