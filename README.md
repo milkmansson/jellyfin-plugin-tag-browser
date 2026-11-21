@@ -297,12 +297,14 @@ flowchart LR
     classDef folder fill:transparent,stroke:#8a8f98,stroke-width:2px
     classDef root fill:transparent,stroke:#8a8f98,stroke-width:4px
     classDef gone fill:transparent,stroke:#8a8f98,stroke-width:2px,stroke-dasharray:5 5
+    classDef note fill:transparent,stroke:none
 
     class L1,B1 beach
     class L2,C1,F1 city
     class L3,F2 bday
     class L4 snow
-    class FAV,BEACH,CITY,OTH,SET folder
+    class FAV,BEACH,CITY,OTH folder
+    class SET note
     class JF,LIB,CH,PCH root
     class GONE gone
 ```
