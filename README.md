@@ -156,6 +156,7 @@ The NFO for `city-trip` from the diagram, saved next to the video as `city-trip.
   <tagline>Three days, too many tiles</tagline>
   <plot>A long weekend in Lisbon with the family: trams, custard tarts and a very steep hill.</plot>
 
+  <!-- Normal movie metadata fields: used here to surface details in the player. -->
   <year>2023</year>
   <premiered>2023-06-14</premiered>
   <mpaa>G</mpaa>
@@ -169,19 +170,22 @@ The NFO for `city-trip` from the diagram, saved next to the video as `city-trip.
   <director>Alex</director>
   <credits>Alex</credits>
   <actor>
-    <name>Alex</name>
+    <name>Bob</name>
     <role>Camera</role>
   </actor>
 
-  <!-- Plain tag: one folder -->
+  <!-- Plain tag: one folder. -->
   <tag>favourites</tag>
   <tag>to edit</tag>
-  <!-- ":" splits a tag into nested folders -->
+  
+  <!-- ":" splits a tag into nested folders. -->
   <tag>holiday: city</tag>
   <tag>season: summer</tag>
-  <!-- Attribute-value pairs: several tags can share a first level -->
+  
+  <!-- Attribute-value pairs: several tags can share a first level. -->
   <tag>with: grandma</tag>
   <tag>with: cousins</tag>
+
   <!-- Any depth is allowed -->
   <tag>holiday: europe: portugal: lisbon</tag>
 </movie>
