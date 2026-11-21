@@ -144,6 +144,82 @@ The plugin groups by what Jellyfin imported, not by the NFO file itself, so an N
 
 Elements not in this table (for example a made-up `<mood>`) are ignored by Jellyfin, so they cannot be grouped by. Properties that are different for every video (`name`, `path`, `video.bitRate`) give one folder per value, which is rarely useful.
 
+#### A complete NFO example
+
+The NFO for `city-trip` from the diagram, saved next to the video as `city-trip.nfo`. The diagram shows only two of its tags, to keep it small. This file uses seven, to show what tags can do.
+
+```xml
+<?xml version="1.0" encoding="UTF-8" standalone="yes"?>
+<movie>
+  <title>City trip</title>
+  <originaltitle>City trip (Lisbon)</originaltitle>
+  <tagline>Three days, too many tiles</tagline>
+  <plot>A long weekend in Lisbon with the family: trams, custard tarts and a very steep hill.</plot>
+
+  <year>2023</year>
+  <premiered>2023-06-14</premiered>
+  <mpaa>G</mpaa>
+  <rating>8.5</rating>
+
+  <genre>Travel</genre>
+  <genre>Family</genre>
+  <studio>Home movies</studio>
+  <country>Portugal</country>
+
+  <director>Alex</director>
+  <credits>Alex</credits>
+  <actor>
+    <name>Alex</name>
+    <role>Camera</role>
+  </actor>
+
+  <!-- Plain tag: one folder -->
+  <tag>favourites</tag>
+  <tag>to edit</tag>
+  <!-- ":" splits a tag into nested folders -->
+  <tag>holiday: city</tag>
+  <tag>season: summer</tag>
+  <!-- Attribute-value pairs: several tags can share a first level -->
+  <tag>with: grandma</tag>
+  <tag>with: cousins</tag>
+  <!-- Any depth is allowed -->
+  <tag>holiday: europe: portugal: lisbon</tag>
+</movie>
+```
+
+**Tags.** The seven `<tag>` elements place the one video in seven folders of the **Tags** branch. Nothing needs configuring for this.
+
+| Tag | Path in the channel |
+|---|---|
+| `favourites` | `Tags` → `favourites` |
+| `to edit` | `Tags` → `to edit` |
+| `holiday: city` | `Tags` → `holiday` → `city` |
+| `season: summer` | `Tags` → `season` → `summer` |
+| `with: grandma` | `Tags` → `with` → `grandma` |
+| `with: cousins` | `Tags` → `with` → `cousins` |
+| `holiday: europe: portugal: lisbon` | `Tags` → `holiday` → `europe` → `portugal` → `lisbon` |
+
+What this shows about tags:
+
+- A tag can be a plain label (`favourites`) or a label with a value (`with: grandma`).
+- Tags that share a first part share a folder: `with: grandma` and `with: cousins` both sit under `with`, and `holiday: city` and `holiday: europe: portugal: lisbon` both sit under `holiday`.
+- Depth is not limited. The separator can be used any number of times.
+- A tag works as a checklist too. `to edit` is a folder of videos still needing attention, and removing the tag from the NFO removes the video from it.
+
+**Everything else** in the file can feed a branch too, but only where one is switched on or a Property row is added:
+
+| NFO element | Branch | Path in the channel |
+|---|---|---|
+| `<premiered>` | Date (enabled in the settings) | `Date` → `2023` → `2023-06 June` → `2023-06-14` |
+| `<genre>` | Property row `genres` | `genres` → `Travel` and `genres` → `Family` |
+| `<studio>` | Property row `studios` | `studios` → `Home movies` |
+| `<country>` | Property row `productionLocations` | `productionLocations` → `Portugal` |
+| `<mpaa>` | Property row `officialRating` | `officialRating` → `G` |
+| `<director>` | Property row `person.director` | `person.director` → `Alex` |
+| `<actor>` | Property row `person.actor` | `person.actor` → `Alex` |
+
+The codec in the diagram (`hevc`) does not come from the NFO. Jellyfin reads it from the video file, as the `video.codec` file property.
+
 #### Examples
 
 | Row (Property → Shown as) | Result |
