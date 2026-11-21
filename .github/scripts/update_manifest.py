@@ -1,6 +1,6 @@
 #!/usr/bin/env python3
 # SPDX-License-Identifier: GPL-3.0-or-later
-"""Add a release to manifest.json (Jellyfin plugin repository format). Plugin metadata comes from build.yaml."""
+"""Add a release to manifest.json (Jellyfin plugin repository format). Plugin metadata and the changelog text come from build.yaml; --changelog is appended after it."""
 import argparse
 import datetime
 import json
@@ -21,6 +21,8 @@ def read_build_yaml():
             meta[key] = m.group(1).strip()
     desc = re.search(r"^description:\s*>\s*\n((?:\s{2,}.*\n?)+)", text, re.M)
     meta["description"] = " ".join(line.strip() for line in desc.group(1).splitlines()) if desc else meta.get("overview", "")
+    log = re.search(r"^changelog:\s*>\s*\n((?:\s{2,}.*\n?)+)", text, re.M)
+    meta["changelog"] = " ".join(line.strip() for line in log.group(1).splitlines()) if log else ""
     return meta
 
 
@@ -53,7 +55,7 @@ def main():
     plugin["versions"] = [v for v in plugin["versions"] if v.get("version") != args.version]
     plugin["versions"].insert(0, {
         "version": args.version,
-        "changelog": args.changelog,
+        "changelog": "\n\n".join(part for part in (meta["changelog"], args.changelog) if part),
         "targetAbi": meta["targetAbi"],
         "sourceUrl": args.url,
         "checksum": args.checksum,

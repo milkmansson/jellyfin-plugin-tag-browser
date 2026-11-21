@@ -61,7 +61,7 @@ public class Plugin : BasePlugin<PluginConfiguration>, IHasWebPages
     public override Guid Id => Guid.Parse("209c23d2-2b52-4e78-a4d7-3107e770e326");
 
     /// <inheritdoc />
-    public override string Description => "Browse a library by its tags, as a tree. Tags like \"move: cambre\" are split on the separator into nested folders.";
+    public override string Description => "Browse a library as a tree of folders built from tags, dates and metadata. Tags are split on a separator into nested folders, so a tag such as \"holiday: beach\" appears under holiday > beach. Optional branches group videos by date, library folder or any Jellyfin property (genres, studios, people, video codec, audio language), and any branch can be promoted to a channel of its own. Full documentation: https://github.com/milkmansson/jellyfin-plugin-tag-browser#readme";
 
     /// <inheritdoc />
     public IEnumerable<PluginPageInfo> GetPages()
