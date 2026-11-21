@@ -29,11 +29,10 @@ flowchart LR
     LIB --> L4["snow-day<br/>no tags<br/>2023 · hevc"]
 
     %% Branch 1: Tags (":" splits into nested folders)
-    CH --> TAGS[Tags]
-    TAGS --> HOL[holiday]
+    CH --> HOL[holiday]
     HOL --> BEACH[beach]
     HOL --> CITY[city]
-    TAGS --> FAV[favourites]
+    CH --> FAV[favourites]
     BEACH --> T1[beach-day]
     CITY --> T2[city-trip]
     FAV --> T2b[city-trip]
@@ -72,7 +71,7 @@ flowchart LR
     class L2,T2,T2b,D2,C2 city
     class L3,T3,D3,C3 bday
     class L4,D4,C4 snow
-    class TAGS,HOL,BEACH,CITY,FAV,DATE,Y22,Y23,COD,H264,HEVC folder
+    class HOL,BEACH,CITY,FAV,DATE,Y22,Y23,COD,H264,HEVC folder
     class JF,LIB,CH root
 ```
 
@@ -91,9 +90,11 @@ Tags only lists tagged videos; the other branches list all videos of the include
 
 | Tag              | Path in the channel          |
 | ---------------- | ---------------------------- |
-| `favourites`     | `Tags` → `favourites`        |
-| `holiday: beach` | `Tags` → `holiday` → `beach` |
-| `holiday: city`  | `Tags` → `holiday` → `city`  |
+| `favourites`     | `favourites`                 |
+| `holiday: beach` | `holiday` → `beach`          |
+| `holiday: city`  | `holiday` → `city`           |
+
+Tag folders sit at the top level of the channel, alongside the other branches. With the *Tags at the top level* setting off, the same paths sit under a `Tags` folder instead.
 
 > [!TIP] 
 > Any metadata property can become its own top-level folder, listing every distinct value beneath it (studios, actors, year, codec, …). To do this, In the plugin settings (**Dashboard** -> **Plugins** -> **Tag Browser** -> **Settings** ), add a row to the **Property Branches** table:
@@ -191,17 +192,17 @@ The NFO for `city-trip` from the diagram, saved next to the video as `city-trip.
 </movie>
 ```
 
-**Tags.** The seven `<tag>` elements place the one video in seven folders of the **Tags** branch. Nothing needs configuring for this.
+**Tags.** The seven `<tag>` elements place the one video in seven folders at the top level of the channel. Nothing needs configuring for this.
 
 | Tag | Path in the channel |
 |---|---|
-| `favourites` | `Tags` → `favourites` |
-| `to edit` | `Tags` → `to edit` |
-| `holiday: city` | `Tags` → `holiday` → `city` |
-| `season: summer` | `Tags` → `season` → `summer` |
-| `with: grandma` | `Tags` → `with` → `grandma` |
-| `with: cousins` | `Tags` → `with` → `cousins` |
-| `holiday: europe: portugal: lisbon` | `Tags` → `holiday` → `europe` → `portugal` → `lisbon` |
+| `favourites` | `favourites` |
+| `to edit` | `to edit` |
+| `holiday: city` | `holiday` → `city` |
+| `season: summer` | `season` → `summer` |
+| `with: grandma` | `with` → `grandma` |
+| `with: cousins` | `with` → `cousins` |
+| `holiday: europe: portugal: lisbon` | `holiday` → `europe` → `portugal` → `lisbon` |
 
 What this shows about tags:
 

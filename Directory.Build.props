@@ -1,6 +1,6 @@
 <Project>
   <PropertyGroup>
     <!-- Releases pass -p:Version=<tag>.0; AssemblyVersion and FileVersion follow Version, so the version Jellyfin reads from the DLL matches the catalog. -->
-    <Version>0.2.0.0</Version>
+    <Version>0.2.1.0</Version>
   </PropertyGroup>
 </Project>
