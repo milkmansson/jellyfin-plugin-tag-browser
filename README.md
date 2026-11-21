@@ -200,7 +200,7 @@ Questions for the Jellyfin developers and plugin authors:
 - Does Jellyfin reliably remove the database rows of channels that no longer exist (renamed or unassigned)? It did in testing.
 - Is there a better way to keep watched state in one place than separate items per channel and folder?
 
-Please [open an issue](https://github.com/milkmansson/jellyfin-plugin-tag-browser/issues) or reply in the discussion.
+Please [open an issue](https://github.com/milkmansson/jellyfin-plugin-tag-browser/issues) or reply in the [discussions](https://github.com/milkmansson/jellyfin-plugin-tag-browser/discussions).
 
 ## Requirements
 
