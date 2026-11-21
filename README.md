@@ -83,7 +83,7 @@ In its 'Tag Browser' channel, folders exist with tag names.  A video with severa
 | Branch       | Built from                                                                                          | Example path                                     |
 | ------------ | --------------------------------------------------------------------------------------------------- | ------------------------------------------------ |
 | Date         | `<premiered>`, else the date recorded in the file, else a date in the file name                     | `Date` → `2022` → `2022-03 March` → `2022-03-20` |
-| Folders      | Library folder structure                                                                            | `Folders` → `Zouk`                               |
+| Folders      | Library folder structure                                                                            | `Folders` → `Holidays`                            |
 | `<tag>`      | The tags, either as single label names, or attribute-value-pairs, separated by `:`.                 | *(Example table below)*                          |
 | `<property>` | Using video metadata and properties collected by Jellyfin, from metadata and video characteristics. | `video.codec` → `h264` <br>                      |
 
@@ -123,7 +123,7 @@ Where the names come from:
 
 The plugin groups by what Jellyfin imported, not by the NFO file itself, so an NFO element only helps if Jellyfin reads it. From Jellyfin's [NFO parser](https://github.com/jellyfin/jellyfin/blob/master/MediaBrowser.XbmcMetadata/Parsers/BaseNfoParser.cs):
 
-| NFO element | Property to use |
+| **Jellyfin NFO element** | **Jellyfin internal property** (use this in Tag Browser) |
 |---|---|
 | `<genre>` | `genres` |
 | `<studio>` | `studios` |
@@ -148,13 +148,12 @@ Elements not in this table (for example a made-up `<mood>`) are ignored by Jelly
 
 | Row (Property → Shown as) | Result |
 |---|---|
-| `studios` | `studios` → `Inflow` |
-| `studios` → `Studio` | `Studio` → `Inflow` |
+| `video.codec` | `video.codec` → `h264`, `video.codec` → `hevc` |
+| `video.codec` → `Codec` | `Codec` → `h264`, `Codec` → `hevc` |
 | `person.director` → `Director` | `Director` → `Anna`, and `Director` → `Unknown` for videos without one |
-| `video.codec` → `Codec` | `Codec` → `h264` |
 | `audio.language` → `Audio` | `Audio` → `eng`, `Audio` → `por` |
 
-**Folders with the same name merge.** If two rows have the same *Shown as* name, they become one folder holding the values of both. The same happens with tags: a tag such as `studio: inflow` already creates a top-level `studio` folder, so a `studios` row shown as `studio` adds Jellyfin's studios to that same folder. A video that appears under both is listed once. Give the row a different name to avoid this.
+**Folders with the same name merge.** If two rows have the same *Shown as* name, they become one folder holding the values of both. The same happens with tags: a tag such as `codec: h264` already creates a top-level `codec` folder, so a `video.codec` row shown as `codec` adds Jellyfin's codecs to that same folder. A video that appears under both is listed once. Give the row a different name to avoid this.
 
 **Videos without a value** go into an **Unknown** folder inside that branch. Rename or hide it with *Folder for videos without a value*. A misspelt property does not create Unknown; it shows nothing.
 
@@ -171,9 +170,9 @@ By default the plugin adds one channel, **Tag Browser**.  This can be configured
 
 | Branch | Channel opens at |
 |---|---|
-| `dance` | what is under the `dance` tag: `dance: zouk` and `dance: wcs` appear as `zouk` and `wcs` |
-| `dance: zouk` | the `zouk` folder directly |
-| `Studios` | a property branch, by its shown name: every studio |
+| `holiday` | what is under the `holiday` tag: `holiday: beach` and `holiday: city` appear as `beach` and `city` |
+| `holiday: beach` | the `beach` folder directly |
+| `Codec` | a property branch, by its shown name: every codec |
 | `Date` | the Date branch |
 
 A promoted branch is **moved, not copied**: it leaves the main channel (and any outer promoted branch), so each video is listed in one place. Jellyfin treats a video listed in two channels as two unrelated items with separate watched states, so showing a branch twice would make the existing watched-state limitation worse. Matching ignores case. A promoted channel's tile is a thumbnail of one of its videos, following the *Folder image* and *Folder thumbnail taken from* settings (the logo, or a custom image, if Logo or None is chosen or no video has a thumbnail). Rows without a branch, repeating a branch, or reusing a channel name (including the main one's) are ignored.
