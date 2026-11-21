@@ -9,12 +9,11 @@
 Plugin allowing browsing a [Jellyfin](https://jellyfin.org/) library using tags/metadata.
 
 > [!WARNING]
-> **Status:** Testing and iterative improvements. Please try this out and leave us a github issue with any bugs, comments or features.
+> **Status:** Testing and iterative improvements. Please try this out and open a [GitHub issue](https://github.com/milkmansson/jellyfin-plugin-tag-browser/issues) with any bugs, comments or features.
 
-## How it works
+## What it does
 
-Adds a **Tag Browser** *channel* to Jellyfin. Each tag becomes a folder, with all similar videos available under that folder.  Videos with multiple tags will appear under all viable tags.
-Tags containing the separator (default `:`) are split into nested folders, as shown:
+Adds a **Tag Browser** *channel* to Jellyfin. Each tag becomes a folder, with all similar videos available under that folder.  Videos with multiple tags will appear under all viable tags.  Tags containing the separator (default `:`) are split into nested folders, as shown:
 
 ```mermaid
 flowchart LR
@@ -77,44 +76,42 @@ flowchart LR
     class JF,LIB,CH root
 ```
 
+## Branches
 
+In its 'Tag Browser' channel, folders exist with tag names.  A video with several tags appears in every matching folder: `city-trip` in the diagram has the tags `holiday: city` and `favourites`, so it is listed under both `holiday` → `city` and `favourites`.  Other branches can be enabled alongside Tags:
 
-| Tag | Path in the channel |
-|---|---|
-| `to practise` | `to practise` |
-| `move: cambre` | `move` → `cambre` |
-| `a: b: c` | `a` → `b` → `c` |
-
-A video with several tags appears in each matching folder.
-
-Other branches can be enabled alongside Tags:
-
-| Branch | Built from | Example path |
-|---|---|---|
-| Date | `<premiered>`, else the date recorded in the file, else a date in the file name | `Date` → `2022` → `2022-03 March` → `2022-03-20` |
-| Folders | Library folder structure | `Folders` → `Zouk` |
-
+| Branch       | Built from                                                                                          | Example path                                     |
+| ------------ | --------------------------------------------------------------------------------------------------- | ------------------------------------------------ |
+| Date         | `<premiered>`, else the date recorded in the file, else a date in the file name                     | `Date` → `2022` → `2022-03 March` → `2022-03-20` |
+| Folders      | Library folder structure                                                                            | `Folders` → `Zouk`                               |
+| `<tag>`      | The tags, either as single label names, or attribute-value-pairs, separated by `:`.                 | *(Example table below)*                          |
+| `<property>` | Using video metadata and properties collected by Jellyfin, from metadata and video characteristics. | `video.codec` → `h264` <br>                      |
 Tags only lists tagged videos; the other branches list all videos of the included libraries.
 
-### Property branches
+| Tag              | Path in the channel          |
+| ---------------- | ---------------------------- |
+| `favourites`     | `Tags` → `favourites`        |
+| `holiday: beach` | `Tags` → `holiday` → `beach` |
+| `holiday: city`  | `Tags` → `holiday` → `city`  |
 
-Any metadata property can become its own top-level folder, listing every distinct value beneath it (studios, actors, year, codec, …). In the settings, add a row to the **Property branches** table:
+> [!TIP] PROPERTY branches
+> Any metadata property can become its own top-level folder, listing every distinct value beneath it (studios, actors, year, codec, …). To do this, In the plugin settings (**Dashboard** -> **Plugins** -> **Tag Browser** -> **Settings** ), add a row to the **Property Branches** table:
+> - **Property** (required): what to group by. Names are Jellyfin's own, not case-sensitive. The settings page suggests names while typing but accepts anything.
+> - **Shown as** (optional): the folder name in the channel. Useful to rename something like `video.codec` to `codec`.  (Default: the property stays as it was named.)
+> 
+> The table is empty by default, and uses tags alone, processing any/all tags in the selected library (or all libraries, if none ore specified).
 
-- **Property** (required): what to group by. Names are Jellyfin's own, not case-sensitive. The settings page suggests them as you type but accepts anything.
-- **Shown as** (optional): the folder name in the channel. Default: the property exactly as you typed it.
+### Which properties can I use?
 
-The table is empty by default.
+Jellyfin keeps three kinds of information about a video. Each can become a branch, but they are set up in different places. All names come straight from Jellyfin and its database. The plugin does not keep its own list, and no list needs to be configured.
 
-#### Which properties can I use?
+**1. Tags** are labels added by hand. They have their own branch (see above), not a Property row. Use a tag when nothing Jellyfin already knows about the video describes the grouping needed, such as `favourites` or `holiday: beach`.
 
-There are three kinds of names. All come straight from Jellyfin, so the plugin does not keep its own list.
+**2. Metadata** is descriptive information about the video, from the NFO file or an online provider. Add it as a Property row, using Jellyfin's property name. Examples: `genres`, `studios`, `productionYear`, `officialRating`, `productionLocations`, `originalTitle`, `communityRating`, `dateCreated`.
+The full set is the public properties of Jellyfin's [`BaseItem`](https://github.com/jellyfin/jellyfin/blob/master/MediaBrowser.Controller/Entities/BaseItem.cs) and [`Video`](https://github.com/jellyfin/jellyfin/blob/master/MediaBrowser.Controller/Entities/Video.cs) classes (and `Episode` for episodes). Type the property name as it is written there. Use the version of the source that matches the Jellyfin server in use; the properties can change between versions.
+People are one example of metadata. Jellyfin stores them separately from the video, so they are written `person.<role>` rather than as a plain name, e.g. `person.actor`, `person.director`, `person.writer`, `person.producer`, `person.guestStar`, `person.composer`.
 
-**1. Item properties**: any readable property of a Jellyfin video or episode that holds text, numbers, yes/no, a date, an option from a fixed set, or a list of those. Examples: `genres`, `studios`, `productionYear`, `officialRating`, `productionLocations`, `originalTitle`, `container`, `communityRating`, `videoType`, `width`, `height`, `dateCreated`.
-The full set is the public properties of Jellyfin's [`BaseItem`](https://github.com/jellyfin/jellyfin/blob/master/MediaBrowser.Controller/Entities/BaseItem.cs) and [`Video`](https://github.com/jellyfin/jellyfin/blob/master/MediaBrowser.Controller/Entities/Video.cs) classes (and `Episode` for episodes). Type the property name as it is written there. Use the version of the source that matches your Jellyfin server; the properties can change between versions.
-
-**2. People**: `person.<role>`, where the role is one of Jellyfin's person kinds, e.g. `person.actor`, `person.director`, `person.writer`, `person.producer`, `person.guestStar`, `person.composer`. People are stored separately from the item, so they have no plain property name.
-
-**3. Stream properties**: what is inside the file. Use `video.`, `audio.` or `subtitle.` followed by any property of Jellyfin's [`MediaStream`](https://github.com/jellyfin/jellyfin/blob/master/MediaBrowser.Model/Entities/MediaStream.cs), e.g. `video.codec`, `video.height`, `video.bitDepth`, `audio.language`, `audio.channels`, `audio.channelLayout`, `subtitle.language`. A video with several audio tracks appears under each value.
+**3. File properties** describe what is inside the video file itself, rather than what it is about: the codec, resolution, audio language and so on. Use `video.`, `audio.` or `subtitle.` followed by any property of Jellyfin's [`MediaStream`](https://github.com/jellyfin/jellyfin/blob/master/MediaBrowser.Model/Entities/MediaStream.cs), e.g. `video.codec`, `video.height`, `video.bitDepth`, `audio.language`, `audio.channels`, `audio.channelLayout`, `subtitle.language`. A video with several audio tracks appears under each value. Container and size (`container`, `width`, `height`) are on the video itself, so they count as metadata above.
 
 Not usable: `tag` (tags have their own branch above), and anything that is not text, a number, yes/no, a date or an option (such as images or nested objects). A name that matches nothing shows nothing, which makes typos easy to spot.
 
@@ -141,7 +138,7 @@ The plugin groups by what Jellyfin imported, not by the NFO file itself, so an N
 | `<actor>`, `<director>`, `<writer>`, `<credits>` | `person.actor`, `person.director`, `person.writer`, `person.writer` (`<credits>` is split on `/`) |
 | `<tag>` | not a property; the Tags branch |
 
-Elements not in this table (for example a made-up `<mood>`) are ignored by Jellyfin, so they cannot be grouped by. Properties that are different for every video (`name`, `path`, `video.bitRate`) give one folder per value, which is rarely what you want.
+Elements not in this table (for example a made-up `<mood>`) are ignored by Jellyfin, so they cannot be grouped by. Properties that are different for every video (`name`, `path`, `video.bitRate`) give one folder per value, which is rarely useful.
 
 #### Examples
 
@@ -153,7 +150,7 @@ Elements not in this table (for example a made-up `<mood>`) are ignored by Jelly
 | `video.codec` → `Codec` | `Codec` → `h264` |
 | `audio.language` → `Audio` | `Audio` → `eng`, `Audio` → `por` |
 
-**Folders with the same name merge.** If two rows have the same *Shown as* name, they become one folder holding the values of both. The same happens with tags: a tag such as `studio: inflow` already creates a top-level `studio` folder, so a `studios` row shown as `studio` adds Jellyfin's studios to that same folder. A video that appears under both is listed once. Give the row a different name if you do not want this.
+**Folders with the same name merge.** If two rows have the same *Shown as* name, they become one folder holding the values of both. The same happens with tags: a tag such as `studio: inflow` already creates a top-level `studio` folder, so a `studios` row shown as `studio` adds Jellyfin's studios to that same folder. A video that appears under both is listed once. Give the row a different name to avoid this.
 
 **Videos without a value** go into an **Unknown** folder inside that branch. Rename or hide it with *Folder for videos without a value*. A misspelt property does not create Unknown; it shows nothing.
 
@@ -163,10 +160,10 @@ Elements not in this table (for example a made-up `<mood>`) are ignored by Jelly
 
 ## Channels
 
-By default the plugin adds one channel, **Tag Browser**. Two settings change that.
+By default the plugin adds one channel, **Tag Browser**.  This can be configured:
 
-- **Show the main channel.** Off hides it completely.
-- **Separate channels.** A table where each row promotes one branch of the tree to a channel of its own (up to 10). *Branch* is a folder as shown in the tree, using the tag separator for levels; *Channel name* is optional and defaults to the last part of the branch.
+- **Show the main channel:** This turns off the Tag Browser channel.  All features will be hidden unless a branch is promoted to a channel of its own. 
+- **Promoting a branch to a *Separate* channel:** The settings have a table listing which top level branches of the tree will be promoted a channel of its own (up to 10). *Branch* is a folder as shown in the tree, using the tag separator for levels; *Channel name* is optional and defaults to the last part of the branch.
 
 | Branch | Channel opens at |
 |---|---|
@@ -175,37 +172,37 @@ By default the plugin adds one channel, **Tag Browser**. Two settings change tha
 | `Studios` | a property branch, by its shown name: every studio |
 | `Date` | the Date branch |
 
-A promoted branch is **moved, not copied**: it leaves the main channel (and any outer promoted branch), so each video is listed in one place. Jellyfin treats a video listed in two channels as two unrelated items with separate watched states, so showing a branch twice would make the existing watched-state limitation worse. Matching ignores case. A promoted channel's tile is a thumbnail of one of its videos, following the *Folder image* and *Folder thumbnail taken from* settings (the logo, or your custom image, if you choose Logo or None or no video has a thumbnail). Rows without a branch, repeating a branch, or reusing a channel name (including the main one's) are ignored.
+A promoted branch is **moved, not copied**: it leaves the main channel (and any outer promoted branch), so each video is listed in one place. Jellyfin treats a video listed in two channels as two unrelated items with separate watched states, so showing a branch twice would make the existing watched-state limitation worse. Matching ignores case. A promoted channel's tile is a thumbnail of one of its videos, following the *Folder image* and *Folder thumbnail taken from* settings (the logo, or a custom image, if Logo or None is chosen or no video has a thumbnail). Rows without a branch, repeating a branch, or reusing a channel name (including the main one's) are ignored.
 
-### How this works, and what we would like advice on
+### How this works, and what advice is wanted
 
-This is what the plugin does today. We are not sure it is the best way, and guidance from people who know Jellyfin's channel code better is very welcome.
+This is what the plugin does today. It is not certain this is the best way, and guidance from people who know Jellyfin's channel code better is very welcome.
 
 Jellyfin builds its list of channels once, at startup, from the `IChannel` services a plugin registers. Settings, however, change while the server runs. So the plugin registers the main channel plus **10 spare channels** (all the same class, `PromotedTagChannel`). A spare channel answers `IsEnabledFor` with *false* until a row in the table assigns it a branch, which keeps it out of the channel list; once assigned, it takes its name and starting folder from the settings. Because a channel's id comes from its name, which slot hosts a row does not matter. Saving the settings runs *Refresh Channels*.
 
-We tried this on Jellyfin 12.4 with a throwaway channel. Switching a channel on or off, and renaming it, took effect without restarting the server.
+This was tried on Jellyfin 12.4 with a throwaway channel. Switching a channel on or off, and renaming it, took effect without restarting the server.
 
 What it costs:
 
 - **A fixed limit of 10** promoted channels, set in the code.
 - **A hidden database row per channel.** Jellyfin creates a row for each registered channel at startup, even while it is switched off: ten small rows named `Tag Browser spare 1` … `10`, never shown in a client.
-- **Renaming a promoted channel creates a new channel** (the id comes from the name) and starts its videos' watched state again. Jellyfin removed the old channel's database row within seconds of the next channel refresh in our tests, but we have not checked this thoroughly. The same already applies to renaming the main channel.
+- **Renaming a promoted channel creates a new channel** (the id comes from the name) and starts its videos' watched state again. Jellyfin removed the old channel's database row within seconds of the next channel refresh in testing, but this has not been checked thoroughly. The same already applies to renaming the main channel.
 - **Channel names must be unique**, as they are the id.
 
-Alternatives we considered: registering exactly as many channels as are configured, which would remove the limit and the hidden rows but needs a server restart after every change and needs the plugin to read its own settings file before Jellyfin has loaded them. We also looked at Jellyfin collections instead of channels, which would give one watched state and the normal library view, but they do not nest and clutter the library.
+Alternatives considered: registering exactly as many channels as are configured, which would remove the limit and the hidden rows but needs a server restart after every change and needs the plugin to read its own settings file before Jellyfin has loaded them. Jellyfin collections were also considered instead of channels, which would give one watched state and the normal library view, but they do not nest and clutter the library.
 
 Questions for the Jellyfin developers and plugin authors:
 
 - Is registering several channels from one plugin like this acceptable, or is there a supported way to add and remove channels while the server runs?
-- Does Jellyfin reliably remove the database rows of channels that no longer exist (renamed or unassigned)? It did in our tests.
+- Does Jellyfin reliably remove the database rows of channels that no longer exist (renamed or unassigned)? It did in testing.
 - Is there a better way to keep watched state in one place than separate items per channel and folder?
 
-Please open an issue or reply in the discussion.
+Please [open an issue](https://github.com/milkmansson/jellyfin-plugin-tag-browser/issues) or reply in the discussion.
 
 ## Requirements
 
 - Jellyfin **12.4.0**.
-  - Plugins are tied to the server version. Pin your Jellyfin version; update the plugin when upgrading Jellyfin.
+  - Plugins are tied to the server version. Pin the Jellyfin version; update the plugin when upgrading Jellyfin.
   - Tested with `lscr.io/linuxserver/jellyfin:12.4ubu2604-ls60`.
 
 ## Install
@@ -258,7 +255,7 @@ Based on [jellyfin-plugin-template](https://github.com/jellyfin/jellyfin-plugin-
 
 ## Disclaimer
 
-AI was used heavily throughout the writing of this code.  It has automatic tests which AI uses, and has been manually tested and bugfixed against Jellyfin servers by humans too. Please use this at your own risk.
+AI was used heavily throughout the writing of this code.  It has automatic tests which AI and CI/CD uses, it is also manually tested and bugfixed against Jellyfin servers by humans too. This code is used at the user's own risk.
 
 ## License
 
