@@ -3,6 +3,14 @@
     "guid": "209c23d2-2b52-4e78-a4d7-3107e770e326",
     "versions": [
       {
+        "version": "0.2.0.0",
+        "changelog": "See https://github.com/milkmansson/jellyfin-plugin-tag-browser/releases/tag/v0.2.0",
+        "targetAbi": "12.4.0.0",
+        "sourceUrl": "https://github.com/milkmansson/jellyfin-plugin-tag-browser/releases/download/v0.2.0/tag-browser_0.2.0.0.zip",
+        "checksum": "e34401bda47b433f60ef9db1d9c5acaa",
+        "timestamp": "2026-11-20T19:11:18Z"
+      },
+      {
         "version": "0.1.0.0",
         "changelog": "See https://github.com/milkmansson/jellyfin-plugin-tag-browser/releases/tag/v0.1.0",
         "targetAbi": "12.4.0.0",
@@ -12,8 +20,8 @@
       }
     ],
     "name": "Tag Browser",
-    "description": "Adds a \"Tag Browser\" channel that shows your library as a folder tree. Tags are split on a separator (default \":\") into nested folders, so \"move: cambre\" appears under move > cambre. Optional branches by date, library folder, genre, studio and people. Videos only.",
-    "overview": "Browse your library as a tree of tags, dates and folders",
+    "description": "Adds a \"Tag Browser\" channel that shows your library as a folder tree. Tags are split on a separator (default \":\") into nested folders, so \"move: cambre\" appears under move > cambre. Optional branches by date and library folder, and by any Jellyfin property you choose: genres, studios, production year, rating, people by role (for example directors), or what is in the file (video codec, audio language). Any branch can also be promoted to a channel of its own, and the main channel can be hidden. Videos only.",
+    "overview": "Browse your library as a tree of tags, dates, folders and any metadata",
     "owner": "milkmansson",
     "category": "General",
     "imageUrl": "https://raw.githubusercontent.com/milkmansson/jellyfin-plugin-tag-browser/main/Jellyfin.Plugin.TagBrowser/Images/primary.png"
