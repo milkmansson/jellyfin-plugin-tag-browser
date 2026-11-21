@@ -86,6 +86,7 @@ In its 'Tag Browser' channel, folders exist with tag names.  A video with severa
 | Folders      | Library folder structure                                                                            | `Folders` → `Zouk`                               |
 | `<tag>`      | The tags, either as single label names, or attribute-value-pairs, separated by `:`.                 | *(Example table below)*                          |
 | `<property>` | Using video metadata and properties collected by Jellyfin, from metadata and video characteristics. | `video.codec` → `h264` <br>                      |
+
 Tags only lists tagged videos; the other branches list all videos of the included libraries.
 
 | Tag              | Path in the channel          |
