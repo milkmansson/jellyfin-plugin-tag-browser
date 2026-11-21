@@ -6,15 +6,78 @@
 </p>
 
 # jellyfin-plugin-tag-browser
-Plugin allowing browsing a Jellyfin library using tags/metadata.
+Plugin allowing browsing a [Jellyfin](https://jellyfin.org/) library using tags/metadata.
 
 > [!WARNING]
-> **Status:** Early development. Please try this out and leave us an issue with any bugs or features.
+> **Status:** Testing and iterative improvements. Please try this out and leave us a github issue with any bugs, comments or features.
 
 ## How it works
 
-Adds a **Tag Browser** channel. Each tag becomes a folder, with all similar videos available under that folder.  Videos with multiple tags will appear under all viable tags.
-Tags containing the separator (default `:`) are split into nested folders:
+Adds a **Tag Browser** *channel* to Jellyfin. Each tag becomes a folder, with all similar videos available under that folder.  Videos with multiple tags will appear under all viable tags.
+Tags containing the separator (default `:`) are split into nested folders, as shown:
+
+```mermaid
+flowchart LR
+    JF([Jellyfin server])
+
+    JF --> LIB[Library]
+    JF --> CH[Channel:<br/>Tag Browser]
+
+    %% Library: plain videos, each with its own tags and metadata
+    LIB --> L1["beach-day<br/>tag: holiday: beach<br/>2022 · h264"]
+    LIB --> L2["city-trip<br/>tags: holiday: city,<br/>favourites<br/>2023 · hevc"]
+    LIB --> L3["birthday<br/>tag: favourites<br/>2022 · h264"]
+    LIB --> L4["snow-day<br/>no tags<br/>2023 · hevc"]
+
+    %% Branch 1: Tags (":" splits into nested folders)
+    CH --> TAGS[Tags]
+    TAGS --> HOL[holiday]
+    HOL --> BEACH[beach]
+    HOL --> CITY[city]
+    TAGS --> FAV[favourites]
+    BEACH --> T1[beach-day]
+    CITY --> T2[city-trip]
+    FAV --> T2b[city-trip]
+    FAV --> T3[birthday]
+
+    %% Branch 2: Date
+    CH --> DATE[Date]
+    DATE --> Y22[2022]
+    DATE --> Y23[2023]
+    Y22 --> D1[beach-day]
+    Y22 --> D3[birthday]
+    Y23 --> D2[city-trip]
+    Y23 --> D4[snow-day]
+
+    %% Branch 3: a property branch (video codec)
+    CH --> COD[Codec]
+    COD --> H264[h264]
+    COD --> HEVC[hevc]
+    H264 --> C1[beach-day]
+    H264 --> C3[birthday]
+    HEVC --> C2[city-trip]
+    HEVC --> C4[snow-day]
+
+    %% One colour per source video, reused on every copy in the channel
+    classDef beach fill:#cfe3ff,stroke:#2f6fd0,color:#111
+    classDef city fill:#cdeccf,stroke:#2e9b3a,color:#111
+    classDef bday fill:#ffd9b0,stroke:#d9731a,color:#111
+    classDef snow fill:#ecd0f5,stroke:#9a3db8,color:#111
+
+    %% Folders: no fill or text colour, so the theme supplies both; strong border
+    classDef folder fill:transparent,stroke:#8a8f98,stroke-width:2px
+    %% Server, Library and Channel: heaviest border
+    classDef root fill:transparent,stroke:#8a8f98,stroke-width:4px
+
+    class L1,T1,D1,C1 beach
+    class L2,T2,T2b,D2,C2 city
+    class L3,T3,D3,C3 bday
+    class L4,D4,C4 snow
+    class TAGS,HOL,BEACH,CITY,FAV,DATE,Y22,Y23,COD,H264,HEVC folder
+    class JF,LIB,CH root
+```
+
+
 
 | Tag | Path in the channel |
 |---|---|
