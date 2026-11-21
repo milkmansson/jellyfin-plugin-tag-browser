@@ -106,15 +106,18 @@ Tags only lists tagged videos; the other branches list all videos of the include
 
 Jellyfin keeps three kinds of information about a video. Each can become a branch, but they are set up in different places. All names come straight from Jellyfin and its database. The plugin does not keep its own list, and no list needs to be configured.
 
-**1. Tags** are labels added by hand. They have their own branch (see above), not a Property row. Use a tag when nothing Jellyfin already knows about the video describes the grouping needed, such as `favourites` or `holiday: beach`.
+| Kind | What it is | How to use it | Examples |
+|---|---|---|---|
+| **1. Tags** | Labels added by hand | Own branch (see above), not a Property row. Use a tag when nothing Jellyfin already knows about the video describes the grouping needed. | `favourites`, `holiday: beach` |
+| **2. Metadata** | Descriptive information about the video, from the NFO file or an online provider | Property row, using Jellyfin's property name. | `genres`, `studios`, `productionYear`, `officialRating`, `productionLocations`, `originalTitle`, `communityRating`, `dateCreated`<br>People: `person.actor`, `person.director`, `person.writer` |
+| **3. File properties** | What is inside the video file itself, rather than what it is about | Property row: `video.`, `audio.` or `subtitle.` followed by a property name. | `video.codec`, `video.height`, `video.bitDepth`, `audio.language`, `audio.channels`, `audio.channelLayout`, `subtitle.language` |
+| **4. Not usable** | `tag` (tags have their own branch), and anything that is not text, a number, yes/no, a date or an option | Nothing is shown. A name that matches nothing shows nothing, which makes typos easy to spot. | images, nested objects |
 
-**2. Metadata** is descriptive information about the video, from the NFO file or an online provider. Add it as a Property row, using Jellyfin's property name. Examples: `genres`, `studios`, `productionYear`, `officialRating`, `productionLocations`, `originalTitle`, `communityRating`, `dateCreated`.
-The full set is the public properties of Jellyfin's [`BaseItem`](https://github.com/jellyfin/jellyfin/blob/master/MediaBrowser.Controller/Entities/BaseItem.cs) and [`Video`](https://github.com/jellyfin/jellyfin/blob/master/MediaBrowser.Controller/Entities/Video.cs) classes (and `Episode` for episodes). Type the property name as it is written there. Use the version of the source that matches the Jellyfin server in use; the properties can change between versions.
-People are one example of metadata. Jellyfin stores them separately from the video, so they are written `person.<role>` rather than as a plain name, e.g. `person.actor`, `person.director`, `person.writer`, `person.producer`, `person.guestStar`, `person.composer`.
+Where the names come from:
 
-**3. File properties** describe what is inside the video file itself, rather than what it is about: the codec, resolution, audio language and so on. Use `video.`, `audio.` or `subtitle.` followed by any property of Jellyfin's [`MediaStream`](https://github.com/jellyfin/jellyfin/blob/master/MediaBrowser.Model/Entities/MediaStream.cs), e.g. `video.codec`, `video.height`, `video.bitDepth`, `audio.language`, `audio.channels`, `audio.channelLayout`, `subtitle.language`. A video with several audio tracks appears under each value. Container and size (`container`, `width`, `height`) are on the video itself, so they count as metadata above.
-
-Not usable: `tag` (tags have their own branch above), and anything that is not text, a number, yes/no, a date or an option (such as images or nested objects). A name that matches nothing shows nothing, which makes typos easy to spot.
+- **Metadata** names are the public properties of Jellyfin's [`BaseItem`](https://github.com/jellyfin/jellyfin/blob/master/MediaBrowser.Controller/Entities/BaseItem.cs) and [`Video`](https://github.com/jellyfin/jellyfin/blob/master/MediaBrowser.Controller/Entities/Video.cs) classes (and `Episode` for episodes). Type the property name as it is written there. Use the version of the source that matches the Jellyfin server in use; the properties can change between versions.
+- **People** are one example of metadata. Jellyfin stores them separately from the video, so they are written `person.<role>` rather than as a plain name. The roles are Jellyfin's person kinds: `actor`, `director`, `writer`, `producer`, `guestStar`, `composer`.
+- **File properties** are the properties of Jellyfin's [`MediaStream`](https://github.com/jellyfin/jellyfin/blob/master/MediaBrowser.Model/Entities/MediaStream.cs). A video with several audio tracks appears under each value. Container and size (`container`, `width`, `height`) are on the video itself, so they count as metadata.
 
 #### What the NFO fills in
 
