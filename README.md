@@ -95,7 +95,7 @@ Tags only lists tagged videos; the other branches list all videos of the include
 | `holiday: beach` | `Tags` → `holiday` → `beach` |
 | `holiday: city`  | `Tags` → `holiday` → `city`  |
 
-> [!TIP] PROPERTY branches
+> [!TIP] 
 > Any metadata property can become its own top-level folder, listing every distinct value beneath it (studios, actors, year, codec, …). To do this, In the plugin settings (**Dashboard** -> **Plugins** -> **Tag Browser** -> **Settings** ), add a row to the **Property Branches** table:
 > - **Property** (required): what to group by. Names are Jellyfin's own, not case-sensitive. The settings page suggests names while typing but accepts anything.
 > - **Shown as** (optional): the folder name in the channel. Useful to rename something like `video.codec` to `codec`.  (Default: the property stays as it was named.)
