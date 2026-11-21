@@ -256,7 +256,60 @@ By default the plugin adds one channel, **Tag Browser**.  This can be configured
 | `Codec` | a property branch, by its shown name: every codec |
 | `Date` | the Date branch |
 
-A promoted branch is **moved, not copied**: it leaves the main channel (and any outer promoted branch), so each video is listed in one place. Jellyfin treats a video listed in two channels as two unrelated items with separate watched states, so showing a branch twice would make the existing watched-state limitation worse. Matching ignores case. A promoted channel's tile is a thumbnail of one of its videos, following the *Folder image* and *Folder thumbnail taken from* settings (the logo, or a custom image, if Logo or None is chosen or no video has a thumbnail). Rows without a branch, repeating a branch, or reusing a channel name (including the main one's) are ignored.
+Promoting `holiday` in the example library looks like this. The Library is not touched: only the channel view is rearranged.
+
+```mermaid
+flowchart LR
+    SET["Setting: Separate channels<br/>Branch: holiday"]
+
+    JF([Jellyfin server])
+    JF --> LIB["Library<br/>(not touched)"]
+    JF --> CH[Channel:<br/>Tag Browser]
+    JF --> PCH[Channel:<br/>holiday]
+    SET -.->|creates| PCH
+
+    %% Library: exactly as before, tags stay on the videos
+    LIB --> L1["beach-day<br/>tag: holiday: beach<br/>2022 · h264"]
+    LIB --> L2["city-trip<br/>tags: holiday: city,<br/>favourites<br/>2023 · hevc"]
+    LIB --> L3["birthday<br/>tag: favourites<br/>2022 · h264"]
+    LIB --> L4["snow-day<br/>no tags<br/>2023 · hevc"]
+
+    %% Main channel: the holiday folder has been moved out
+    CH --> FAV[favourites]
+    FAV --> F1[city-trip]
+    FAV --> F2[birthday]
+    CH --> OTH["Date, Codec, …<br/>(unchanged)"]
+    CH -.-> GONE["holiday<br/>(moved, not copied)"]
+
+    %% Promoted channel: opens directly at what was under holiday
+    PCH --> BEACH[beach]
+    PCH --> CITY[city]
+    BEACH --> B1[beach-day]
+    CITY --> C1[city-trip]
+
+    %% Same colour per video as the main diagram
+    classDef beach fill:#cfe3ff,stroke:#2f6fd0,color:#111
+    classDef city fill:#cdeccf,stroke:#2e9b3a,color:#111
+    classDef bday fill:#ffd9b0,stroke:#d9731a,color:#111
+    classDef snow fill:#ecd0f5,stroke:#9a3db8,color:#111
+
+    %% Folders and channels: transparent fill so the theme supplies text colour
+    classDef folder fill:transparent,stroke:#8a8f98,stroke-width:2px
+    classDef root fill:transparent,stroke:#8a8f98,stroke-width:4px
+    classDef gone fill:transparent,stroke:#8a8f98,stroke-width:2px,stroke-dasharray:5 5
+    classDef note fill:transparent,stroke:none
+
+    class L1,B1 beach
+    class L2,C1,F1 city
+    class L3,F2 bday
+    class L4 snow
+    class FAV,BEACH,CITY,OTH folder
+    class SET note
+    class JF,LIB,CH,PCH root
+    class GONE gone
+```
+
+A promoted branch is **moved, not copied**: its folders leave the main channel (and any outer promoted branch), so no folder is shown twice. Only the placements inside the promoted branch move. A video that is also found elsewhere, through another tag, a date or a property, is still listed there. In the diagram, `city-trip` is under `holiday` → `city` in the new channel and under `favourites` in the main one. Jellyfin treats a video listed in two channels as two unrelated items with separate watched states, so a video with tags both inside and outside a promoted branch makes the existing watched-state limitation apply. Matching ignores case. A promoted channel's tile is a thumbnail of one of its videos, following the *Folder image* and *Folder thumbnail taken from* settings (the logo, or a custom image, if Logo or None is chosen or no video has a thumbnail). Rows without a branch, repeating a branch, or reusing a channel name (including the main one's) are ignored.
 
 ### How this works, and what advice is wanted
 
